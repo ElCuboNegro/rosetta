@@ -1,0 +1,11 @@
+# Pipeline Parameters
+
+# Wiktionary dump downloads
+wiktionary:
+  # URLs for latest Wiktionary dumps
+  es_dump_url: "https://dumps.wikimedia.org/eswiktionary/latest/eswiktionary-latest-pages-articles.xml.bz2"
+  he_dump_url: "https://dumps.wikimedia.org/hewiktionary/latest/hewiktionary-latest-pages-articles.xml.bz2"
+  
+  # Local paths where dumps will be saved
+  es_dump_path: "data/01_raw/eswiktionary-latest-pages-articles.xml.bz2"
+  he_dump_path: "data/01_raw/hewiktionary-latest-pages-articles.xml.bz2"

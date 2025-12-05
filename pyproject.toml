@@ -1,0 +1,50 @@
+[tool.kedro]
+package_name = "rosetta_dict"
+project_name = "rosetta-dict"
+kedro_init_version = "1.0.0"
+
+[project]
+name = "rosetta-dict"
+version = "0.1.0"
+description = "A polysemic Spanish-Hebrew dictionary generator using Kedro"
+requires-python = ">=3.9"
+dependencies = [
+    "ipython>=8.10",
+    "jupyterlab>=3.0",
+    "notebook",
+    "kedro[jupyter]~=1.0.0",
+    "kedro-datasets[pandas-csvdataset, pandas-exceldataset, pandas-parquetdataset, plotly-plotlydataset, plotly-jsondataset, matplotlib-matplotlibwriter, MemoryDataset]>=3.0",
+    "kedro-viz>=6.7.0",
+    "scikit-learn~=1.5.1",
+    "seaborn~=0.12.1",
+    "wiktextract>=1.99.0",
+    "lupa==2.2",
+    "rapidfuzz>=3.0.0",
+    "pyarrow>=15.0.0"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.pytest.ini_options]
+addopts = """
+--verbose
+--cov=rosetta_dict
+--cov-report=html
+--cov-report=term-missing
+--cov-fail-under=0
+"""
+testpaths = ["tests"]
+
+[tool.coverage.report]
+fail_under = 0
+show_missing = true
+exclude_lines = ["pragma: no cover", "raise NotImplementedError"]
+
+[tool.kedro_telemetry]
+project_id = "866770b797194e05aced725a49332966"

@@ -1,0 +1,84 @@
+# Spanish-Hebrew Dictionary Data Catalog
+
+# ============================================================================
+# RAW DATA (Input sources)
+# ============================================================================
+
+# Download nodes output file paths as strings
+es_dump_filepath:
+  type: MemoryDataset
+  
+he_dump_filepath:
+  type: MemoryDataset
+
+tatoeba_sentences:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/tatoeba-sample.csv
+  load_args:
+    sep: '\t'
+    header: null
+    names: ['id', 'lang', 'text']
+
+# ============================================================================
+# INTERMEDIATE DATA (Harvester pipeline outputs)
+# ============================================================================
+
+raw_spanish_entries:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/raw_spanish_entries.parquet
+
+raw_hebrew_entries:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/raw_hebrew_entries.parquet
+
+clean_examples:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/clean_examples.parquet
+
+# ============================================================================
+# PRIMARY DATA (Aligner pipeline outputs)
+# ============================================================================
+
+aligned_matches:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/aligned_matches.parquet
+
+enriched_entries:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/enriched_entries.parquet
+
+aligned_dictionary:
+  type: json.JSONDataset
+  filepath: data/03_primary/aligned_dictionary.json
+
+# ============================================================================
+# METRICS & STATISTICS (Pipeline monitoring)
+# ============================================================================
+
+parsing_stats:
+  type: json.JSONDataset
+  filepath: data/06_metrics/parsing_stats.json
+
+parsing_visualizations:
+  type: plotly.JSONDataset
+  filepath: data/06_metrics/parsing_viz.json
+
+alignment_stats:
+  type: json.JSONDataset
+  filepath: data/06_metrics/alignment_stats.json
+
+alignment_visualizations:
+  type: plotly.JSONDataset
+  filepath: data/06_metrics/alignment_viz.json
+
+progress_summary:
+  type: json.JSONDataset
+  filepath: data/06_metrics/progress_summary.json
+
+# ============================================================================
+# REPORTING (Final output)
+# ============================================================================
+
+final_dictionary_json:
+  type: json.JSONDataset
+  filepath: data/08_reporting/dictionary_v1.json

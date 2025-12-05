@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  rosetta:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rosetta-dict
+    volumes:
+      # Mount data directory for persistence
+      - ./data:/app/data
+      # Mount conf for easy configuration updates
+      - ./conf:/app/conf
+      # Mount notebooks for Jupyter
+      - ./notebooks:/app/notebooks
+      # Mount .viz for Kedro Viz pipeline execution tracking
+      - ./.viz:/app/.viz
+    ports:
+      # Jupyter (if needed)
+      - "8888:8888"
+    environment:
+      - KEDRO_LOGGING_CONFIG=conf/logging.yml
+    command: kedro run
+
+  # Service for running Kedro Viz
+  viz:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rosetta-viz
+    volumes:
+      - ./data:/app/data
+      - ./conf:/app/conf
+      # Mount .viz for Kedro Viz pipeline execution tracking
+      - ./.viz:/app/.viz
+    ports:
+      - "4141:4141"
+    command: kedro viz --host 0.0.0.0 --port 4141
