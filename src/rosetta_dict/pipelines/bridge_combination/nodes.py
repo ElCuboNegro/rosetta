@@ -12,9 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def combine_bridge_data(
-    english_df: pd.DataFrame,
-    french_df: pd.DataFrame,
-    german_df: pd.DataFrame
+    english_df: pd.DataFrame, french_df: pd.DataFrame, german_df: pd.DataFrame
 ) -> pd.DataFrame:
     """Combine bridge language data from multiple sources.
 
@@ -31,7 +29,9 @@ def combine_bridge_data(
         Combined bridge dataset with deduplicated entries.
     """
     logger.info("Combining bridge language data...")
-    logger.info(f"Input: {len(english_df)} English, {len(french_df)} French, {len(german_df)} German entries")
+    logger.info(
+        f"Input: {len(english_df)} English, {len(french_df)} French, {len(german_df)} German entries"
+    )
 
     # Add source column to track origin
     english_df = english_df.copy()
@@ -45,20 +45,22 @@ def combine_bridge_data(
     # Combine all dataframes
     combined_df = pd.concat([english_df, french_df, german_df], ignore_index=True)
 
+    # Ensure required columns exist (handle empty inputs)
+    for col in ["source_lang", "word", "pos"]:
+        if col not in combined_df.columns:
+            combined_df[col] = pd.Series(dtype=object)
+
     # Remove exact duplicates (same word, source_lang, and translations)
     before_dedup = len(combined_df)
-    combined_df = combined_df.drop_duplicates(
-        subset=["source_lang", "word", "pos"],
-        keep="first"
-    )
+    combined_df = combined_df.drop_duplicates(subset=["source_lang", "word", "pos"], keep="first")
     after_dedup = len(combined_df)
 
     logger.info(f"Combined {before_dedup} total entries, {after_dedup} after deduplication")
     logger.info(f"Removed {before_dedup - after_dedup} duplicate entries")
 
     # Log statistics
-    es_count = len(combined_df[combined_df['source_lang'] == 'es'])
-    he_count = len(combined_df[combined_df['source_lang'] == 'he'])
+    es_count = len(combined_df[combined_df["source_lang"] == "es"])
+    he_count = len(combined_df[combined_df["source_lang"] == "he"])
 
     logger.info(f"Final bridge data: {es_count} Spanish entries, {he_count} Hebrew entries")
 

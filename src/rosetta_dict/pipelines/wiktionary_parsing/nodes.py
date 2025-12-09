@@ -68,23 +68,25 @@ def parse_spanish_wiktionary(jsonl_path: str) -> pd.DataFrame:
         # Get all translations (English, French, German, Hebrew for triangulation)
         translations = _extract_translations(entry, ["en", "fr", "de", "he"])
 
-        data.append({
-            "word": word,
-            "pos": pos,
-            "ipa": ipa,
-            "definitions": definitions,
-            "translations_en": translations.get("en", []),
-            "translations_fr": translations.get("fr", []),
-            "translations_de": translations.get("de", []),
-            "translations_he": translations.get("he", [])
-        })
+        data.append(
+            {
+                "word": word,
+                "pos": pos,
+                "ipa": ipa,
+                "definitions": definitions,
+                "translations_en": translations.get("en", []),
+                "translations_fr": translations.get("fr", []),
+                "translations_de": translations.get("de", []),
+                "translations_he": translations.get("he", []),
+            }
+        )
 
     df = pd.DataFrame(data)
     logger.info(f"Found {spanish_entries} Spanish entries out of {len(entries)} total entries")
     logger.info(f"Kept {len(df)} Spanish entries with data")
 
     if len(df) > 0:
-        he_trans_count = df['translations_he'].apply(len).sum()
+        he_trans_count = df["translations_he"].apply(len).sum()
         logger.info(f"Entries with Hebrew translations: {he_trans_count}")
 
     return df
@@ -143,23 +145,25 @@ def parse_hebrew_wiktionary(jsonl_path: str) -> pd.DataFrame:
         # Get all translations (English, French, German, Spanish for triangulation)
         translations = _extract_translations(entry, ["en", "fr", "de", "es"])
 
-        data.append({
-            "word": word,
-            "pos": pos,
-            "ipa": ipa,
-            "definitions": definitions,
-            "translations_en": translations.get("en", []),
-            "translations_fr": translations.get("fr", []),
-            "translations_de": translations.get("de", []),
-            "translations_es": translations.get("es", [])
-        })
+        data.append(
+            {
+                "word": word,
+                "pos": pos,
+                "ipa": ipa,
+                "definitions": definitions,
+                "translations_en": translations.get("en", []),
+                "translations_fr": translations.get("fr", []),
+                "translations_de": translations.get("de", []),
+                "translations_es": translations.get("es", []),
+            }
+        )
 
     df = pd.DataFrame(data)
     logger.info(f"Found {hebrew_entries} Hebrew entries out of {len(entries)} total entries")
     logger.info(f"Kept {len(df)} Hebrew entries with data")
 
     if len(df) > 0:
-        es_trans_count = df['translations_es'].apply(len).sum()
+        es_trans_count = df["translations_es"].apply(len).sum()
         logger.info(f"Entries with Spanish translations: {es_trans_count}")
 
     return df
@@ -189,10 +193,10 @@ def parse_english_wiktionary(jsonl_path: str) -> pd.DataFrame:
     entries = []
     entry_count = 0
 
-    is_gzipped = jsonl_path.endswith('.gz')
+    is_gzipped = jsonl_path.endswith(".gz")
     open_func = gzip.open if is_gzipped else open
 
-    with open_func(jsonl_path, 'rt', encoding='utf-8') as f:
+    with open_func(jsonl_path, "rt", encoding="utf-8") as f:
         for line_num, line in enumerate(f, 1):
             if not line.strip():
                 continue
@@ -200,10 +204,21 @@ def parse_english_wiktionary(jsonl_path: str) -> pd.DataFrame:
             try:
                 entry = json.loads(line)
 
-                # Only keep Spanish or Hebrew entries with translations
+                # Keep English entries that have translations to Spanish OR Hebrew
+                # This is the correct logic for bridge data
                 lang_code = entry.get("lang_code")
-                if lang_code in ["es", "he"] and entry.get("translations"):
-                    entries.append(entry)
+                if lang_code == "en" and entry.get("translations"):
+                    # Quick check before full processing
+                    has_relevant_trans = False
+                    for t in entry.get("translations", []):
+                        # English Wiktionary uses 'code' for language code
+                        code = t.get("code")
+                        if code in ["es", "he"]:
+                            has_relevant_trans = True
+                            break
+
+                    if has_relevant_trans:
+                        entries.append(entry)
 
                 entry_count += 1
                 if entry_count % 50000 == 0:
@@ -214,7 +229,7 @@ def parse_english_wiktionary(jsonl_path: str) -> pd.DataFrame:
                 continue
 
     logger.info(f"Scanned {entry_count} total English Wiktionary entries")
-    logger.info(f"Found {len(entries)} Spanish/Hebrew entries with translations")
+    logger.info(f"Found {len(entries)} English entries with Spanish/Hebrew translations")
 
     # Extract bridge translation data
     data = []
@@ -243,22 +258,24 @@ def parse_english_wiktionary(jsonl_path: str) -> pd.DataFrame:
             elif trans_lang == "he" and trans_word not in translations_he:
                 translations_he.append(trans_word)
 
-        data.append({
-            "source_lang": lang_code,
-            "word": word,
-            "pos": pos,
-            "ipa": ipa,
-            "definitions": definitions,
-            "translations_es": translations_es,
-            "translations_he": translations_he
-        })
+        data.append(
+            {
+                "source_lang": lang_code,
+                "word": word,
+                "pos": pos,
+                "ipa": ipa,
+                "definitions": definitions,
+                "translations_es": translations_es,
+                "translations_he": translations_he,
+            }
+        )
 
     df = pd.DataFrame(data)
     logger.info(f"Extracted {len(df)} bridge entries from English Wiktionary")
 
     if len(df) > 0:
-        es_count = len(df[df['source_lang'] == 'es'])
-        he_count = len(df[df['source_lang'] == 'he'])
+        es_count = len(df[df["source_lang"] == "es"])
+        he_count = len(df[df["source_lang"] == "he"])
         logger.info(f"Spanish entries: {es_count}, Hebrew entries: {he_count}")
 
     return df
@@ -318,10 +335,10 @@ def _parse_bridge_wiktionary(jsonl_path: str, language_name: str) -> pd.DataFram
     entries = []
     entry_count = 0
 
-    is_gzipped = jsonl_path.endswith('.gz')
+    is_gzipped = jsonl_path.endswith(".gz")
     open_func = gzip.open if is_gzipped else open
 
-    with open_func(jsonl_path, 'rt', encoding='utf-8') as f:
+    with open_func(jsonl_path, "rt", encoding="utf-8") as f:
         for line_num, line in enumerate(f, 1):
             if not line.strip():
                 continue
@@ -329,10 +346,22 @@ def _parse_bridge_wiktionary(jsonl_path: str, language_name: str) -> pd.DataFram
             try:
                 entry = json.loads(line)
 
-                # Only keep Spanish or Hebrew entries with translations
+                # Keep entries in source language (Fr/De) that have translations to Spanish OR Hebrew
                 lang_code = entry.get("lang_code")
-                if lang_code in ["es", "he"] and entry.get("translations"):
-                    entries.append(entry)
+                target_lang = "fr" if language_name == "French" else "de"
+
+                if lang_code == target_lang and entry.get("translations"):
+                    # Quick check before full processing
+                    has_relevant_trans = False
+                    for t in entry.get("translations", []):
+                        # Most descriptions use 'lang_code' or 'code'
+                        code = t.get("lang_code") or t.get("code")
+                        if code in ["es", "he"]:
+                            has_relevant_trans = True
+                            break
+
+                    if has_relevant_trans:
+                        entries.append(entry)
 
                 entry_count += 1
                 if entry_count % 50000 == 0:
@@ -343,7 +372,7 @@ def _parse_bridge_wiktionary(jsonl_path: str, language_name: str) -> pd.DataFram
                 continue
 
     logger.info(f"Scanned {entry_count} total {language_name} Wiktionary entries")
-    logger.info(f"Found {len(entries)} Spanish/Hebrew entries with translations")
+    logger.info(f"Found {len(entries)} {language_name} entries with Spanish/Hebrew translations")
 
     # Extract bridge translation data
     data = []
@@ -372,28 +401,31 @@ def _parse_bridge_wiktionary(jsonl_path: str, language_name: str) -> pd.DataFram
             elif trans_lang == "he" and trans_word not in translations_he:
                 translations_he.append(trans_word)
 
-        data.append({
-            "source_lang": lang_code,
-            "word": word,
-            "pos": pos,
-            "ipa": ipa,
-            "definitions": definitions,
-            "translations_es": translations_es,
-            "translations_he": translations_he
-        })
+        data.append(
+            {
+                "source_lang": lang_code,
+                "word": word,
+                "pos": pos,
+                "ipa": ipa,
+                "definitions": definitions,
+                "translations_es": translations_es,
+                "translations_he": translations_he,
+            }
+        )
 
     df = pd.DataFrame(data)
     logger.info(f"Extracted {len(df)} bridge entries from {language_name} Wiktionary")
 
     if len(df) > 0:
-        es_count = len(df[df['source_lang'] == 'es'])
-        he_count = len(df[df['source_lang'] == 'he'])
+        es_count = len(df[df["source_lang"] == "es"])
+        he_count = len(df[df["source_lang"] == "he"])
         logger.info(f"Spanish entries: {es_count}, Hebrew entries: {he_count}")
 
     return df
 
 
 # Helper functions
+
 
 def _load_jsonl_entries(jsonl_path: str) -> List[Dict[str, Any]]:
     """Load all entries from a JSONL file (supports gzip).
@@ -407,10 +439,10 @@ def _load_jsonl_entries(jsonl_path: str) -> List[Dict[str, Any]]:
     entries = []
     entry_count = 0
 
-    is_gzipped = jsonl_path.endswith('.gz')
+    is_gzipped = jsonl_path.endswith(".gz")
     open_func = gzip.open if is_gzipped else open
 
-    with open_func(jsonl_path, 'rt', encoding='utf-8') as f:
+    with open_func(jsonl_path, "rt", encoding="utf-8") as f:
         for line_num, line in enumerate(f, 1):
             if not line.strip():
                 continue

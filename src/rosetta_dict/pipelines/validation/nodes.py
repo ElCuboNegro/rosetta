@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class DataQualityError(Exception):
     """Raised when data quality checks fail."""
+
     pass
 
 
@@ -52,21 +53,23 @@ def validate_wiktionary_entries(df: pd.DataFrame, lang_code: str) -> pd.DataFram
     if len(missing_pos) > len(df) * 0.2:  # More than 20%
         issues.append(
             f"High rate of missing POS tags: {len(missing_pos)}/{len(df)} "
-            f"({len(missing_pos)/len(df)*100:.1f}%)"
+            f"({len(missing_pos) / len(df) * 100:.1f}%)"
         )
 
     # Check for empty definitions
-    empty_defs = df[df["definitions"].apply(lambda x: not x or len(x) == 0)]
+    empty_defs = df[
+        df["definitions"].apply(lambda x: len(x) == 0 if hasattr(x, "__len__") else not x)
+    ]
     if len(empty_defs) > len(df) * 0.1:  # More than 10%
         issues.append(
             f"High rate of empty definitions: {len(empty_defs)}/{len(df)} "
-            f"({len(empty_defs)/len(df)*100:.1f}%)"
+            f"({len(empty_defs) / len(df) * 100:.1f}%)"
         )
 
     # Language-specific validation
     if lang_code == "he":
         # Validate Hebrew Unicode
-        hebrew_pattern = re.compile(r'[\u0590-\u05FF\uFB1D-\uFB4F]+')
+        hebrew_pattern = re.compile(r"[\u0590-\u05FF\uFB1D-\uFB4F]+")
         non_hebrew = df[~df["word"].str.contains(hebrew_pattern, na=False)]
 
         if len(non_hebrew) > len(df) * 0.05:  # More than 5%
@@ -106,8 +109,14 @@ def validate_aligned_matches(df: pd.DataFrame) -> pd.DataFrame:
 
     # Required fields
     required_fields = [
-        "es_word", "es_ipa", "es_pos", "es_definition",
-        "he_word", "he_ipa", "sense_id", "match_type"
+        "es_word",
+        "es_ipa",
+        "es_pos",
+        "es_definition",
+        "he_word",
+        "he_ipa",
+        "sense_id",
+        "match_type",
     ]
 
     missing_fields = [f for f in required_fields if f not in df.columns]
@@ -136,11 +145,13 @@ def validate_aligned_matches(df: pd.DataFrame) -> pd.DataFrame:
     # Validate match types
     valid_match_types = ["direct", "triangulation"]
     # Also allow fuzzy_XX where XX is a number
-    valid_fuzzy_pattern = re.compile(r'^fuzzy_\d+$')
+    valid_fuzzy_pattern = re.compile(r"^fuzzy_\d+$")
 
     invalid_matches = df[
-        ~(df["match_type"].isin(valid_match_types) |
-          df["match_type"].str.match(valid_fuzzy_pattern, na=False))
+        ~(
+            df["match_type"].isin(valid_match_types)
+            | df["match_type"].str.match(valid_fuzzy_pattern, na=False)
+        )
     ]
 
     if len(invalid_matches) > 0:
@@ -151,15 +162,14 @@ def validate_aligned_matches(df: pd.DataFrame) -> pd.DataFrame:
         fuzzy_matches = df[df["match_type"].str.startswith("fuzzy", na=False)]
         if len(fuzzy_matches) > 0:
             invalid_confidence = fuzzy_matches[
-                (fuzzy_matches["confidence"] < 0.0) |
-                (fuzzy_matches["confidence"] > 1.0)
+                (fuzzy_matches["confidence"] < 0.0) | (fuzzy_matches["confidence"] > 1.0)
             ]
 
             if len(invalid_confidence) > 0:
                 issues.append(f"Found {len(invalid_confidence)} invalid confidence scores")
 
     # Hebrew Unicode validation
-    hebrew_pattern = re.compile(r'[\u0590-\u05FF\uFB1D-\uFB4F]+')
+    hebrew_pattern = re.compile(r"[\u0590-\u05FF\uFB1D-\uFB4F]+")
     non_hebrew = df[~df["he_word"].str.contains(hebrew_pattern, na=False)]
 
     if len(non_hebrew) > 0:
@@ -284,9 +294,7 @@ def validate_final_dictionary(entries: List[Dict[str, Any]]) -> List[Dict[str, A
 
                 for field in required_sense_fields:
                     if field not in sense:
-                        issues.append(
-                            f"Entry {idx}, sense {sense_idx}: missing '{field}'"
-                        )
+                        issues.append(f"Entry {idx}, sense {sense_idx}: missing '{field}'")
 
                 # Validate sense_id
                 if "sense_id" in sense and sense["sense_id"] < 1:
@@ -297,10 +305,14 @@ def validate_final_dictionary(entries: List[Dict[str, Any]]) -> List[Dict[str, A
             issues.append(f"Entry {idx}: invalid language '{entry_data.get('language')}'")
 
     # Calculate quality metrics
-    total_senses = sum(len(e["entry"]["senses"]) for e in entries if "entry" in e and "senses" in e["entry"])
+    total_senses = sum(
+        len(e["entry"]["senses"]) for e in entries if "entry" in e and "senses" in e["entry"]
+    )
 
     senses_with_ipa = sum(
-        1 for e in entries if "entry" in e
+        1
+        for e in entries
+        if "entry" in e
         for s in e["entry"].get("senses", [])
         if s.get("ipa_hebrew") and s["ipa_hebrew"] not in ["", "None"]
     )
@@ -333,9 +345,7 @@ def validate_final_dictionary(entries: List[Dict[str, Any]]) -> List[Dict[str, A
     return entries
 
 
-def generate_data_quality_report(
-    enriched_df: pd.DataFrame
-) -> Dict[str, Any]:
+def generate_data_quality_report(enriched_df: pd.DataFrame) -> Dict[str, Any]:
     """Generate comprehensive data quality report.
 
     Args:
@@ -351,7 +361,7 @@ def generate_data_quality_report(
         "timestamp": pd.Timestamp.now().isoformat(),
         "metrics": {},
         "issues": [],
-        "recommendations": []
+        "recommendations": [],
     }
 
     # Match type distribution
@@ -367,16 +377,18 @@ def generate_data_quality_report(
     # IPA coverage
     if "he_ipa" in enriched_df.columns:
         valid_ipa = enriched_df[
-            (enriched_df["he_ipa"].notna()) &
-            (enriched_df["he_ipa"] != "") &
-            (enriched_df["he_ipa"].str.len() > 2)
+            (enriched_df["he_ipa"].notna())
+            & (enriched_df["he_ipa"] != "")
+            & (enriched_df["he_ipa"].str.len() > 2)
         ]
         ipa_coverage = len(valid_ipa) / len(enriched_df)
         report["metrics"]["hebrew_ipa_coverage"] = ipa_coverage
 
         if ipa_coverage < 0.8:
             report["issues"].append(f"Low IPA coverage: {ipa_coverage:.1%}")
-            report["recommendations"].append("Run IPA generation pipeline or check phonikud library")
+            report["recommendations"].append(
+                "Run IPA generation pipeline or check phonikud library"
+            )
 
     # Polysemy analysis
     if "es_word" in enriched_df.columns:
@@ -388,7 +400,7 @@ def generate_data_quality_report(
         report["metrics"]["polysemy"] = {
             "polysemic_words": int(polysemic_words),
             "max_senses": int(max_senses),
-            "avg_senses": float(avg_senses)
+            "avg_senses": float(avg_senses),
         }
 
     # Duplicate check

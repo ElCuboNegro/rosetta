@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def align_languages(
-    spanish_df: pd.DataFrame,
-    hebrew_df: pd.DataFrame,
-    bridge_df: pd.DataFrame = None
+    spanish_df: pd.DataFrame, hebrew_df: pd.DataFrame, bridge_df: pd.DataFrame = None
 ) -> pd.DataFrame:
     """Align Spanish words with Hebrew translations using multiple strategies.
 
@@ -53,19 +51,30 @@ def align_languages(
                 sense_id = i + 1
 
                 es_defs = es_row["definitions"] if isinstance(es_row["definitions"], list) else []
-                he_defs = he_entry["definitions"].tolist() if isinstance(he_entry["definitions"], pd.Series) else (he_entry["definitions"] if isinstance(he_entry["definitions"], list) else [])
+                he_defs = (
+                    he_entry["definitions"].tolist()
+                    if isinstance(he_entry["definitions"], pd.Series)
+                    else (
+                        he_entry["definitions"] if isinstance(he_entry["definitions"], list) else []
+                    )
+                )
 
-                alignments.append({
-                    "es_word": es_row["word"],
-                    "es_ipa": es_row["ipa"],
-                    "es_pos": es_row["pos"],
-                    "es_definition": es_defs[i] if i < len(es_defs) else (es_defs[0] if es_defs else ""),
-                    "he_word": he_word,
-                    "he_ipa": he_entry["ipa"],
-                    "he_definition": he_defs[0] if he_defs else "",
-                    "sense_id": sense_id,
-                    "match_type": "direct"
-                })
+                alignments.append(
+                    {
+                        "es_word": es_row["word"],
+                        "es_ipa": es_row["ipa"],
+                        "es_pos": es_row["pos"],
+                        "es_definition": es_defs[i]
+                        if i < len(es_defs)
+                        else (es_defs[0] if es_defs else ""),
+                        "he_word": he_word,
+                        "he_ipa": he_entry["ipa"],
+                        "he_definition": he_defs[0] if he_defs else "",
+                        "sense_id": sense_id,
+                        "match_type": "direct",
+                        "confidence": 1.0,
+                    }
+                )
                 stats["direct"] += 1
 
     logger.info(f"Direct alignments: {stats['direct']}")
@@ -74,11 +83,41 @@ def align_languages(
     if bridge_df is not None and not bridge_df.empty:
         logger.info("Performing triangulation via English Wiktionary...")
 
-        # Build indices for faster lookup
-        es_bridge = bridge_df[bridge_df['source_lang'] == 'es']
-        he_bridge = bridge_df[bridge_df['source_lang'] == 'he']
+        # Build an inverted index: Spanish Word -> List of Hebrew Translations
+        # The bridge data has English words with 'translations_es' and 'translations_he'
+        es_to_he_map = {}
 
-        aligned_es_words = set(a['es_word'] for a in alignments)
+        # Ensure we're working with the right columns
+        if "translations_es" in bridge_df.columns and "translations_he" in bridge_df.columns:
+            count_links = 0
+            for _, row in bridge_df.iterrows():
+                # Get translations (handle potential different formats just in case, though they should be lists)
+                es_trans = (
+                    row["translations_es"] if isinstance(row["translations_es"], list) else []
+                )
+                he_trans = (
+                    row["translations_he"] if isinstance(row["translations_he"], list) else []
+                )
+
+                if es_trans and he_trans:
+                    for es_word in es_trans:
+                        if es_word not in es_to_he_map:
+                            es_to_he_map[es_word] = set()
+                        for he_word in he_trans:
+                            es_to_he_map[es_word].add(he_word)
+                            count_links += 1
+
+            logger.info(
+                f"Built triangulation map: {len(es_to_he_map)} Spanish words linked to Hebrew candidates"
+            )
+
+        aligned_es_words = set(a["es_word"] for a in alignments)
+
+        # Optimize lookup by pre-filtering Hebrew DF for faster existence checks
+        he_lookup = set(hebrew_df["word"].values)
+        he_grouped = hebrew_df.groupby("word")
+
+        stats_triang_attempt = 0
 
         for _, es_row in spanish_df.iterrows():
             es_word = es_row["word"]
@@ -87,49 +126,62 @@ def align_languages(
             if es_word in aligned_es_words:
                 continue
 
-            # Find Spanish word in English Wiktionary
-            es_in_en = es_bridge[es_bridge['word'] == es_word]
+            # Check if we have candidates from triangulation
+            if es_word in es_to_he_map:
+                candidates = es_to_he_map[es_word]
+                stats_triang_attempt += 1
 
-            if not es_in_en.empty:
-                # Get Hebrew translations from English Wiktionary
-                he_translations = es_in_en.iloc[0].get("translations_he", [])
+                for he_word in candidates:
+                    if he_word in he_lookup:
+                        # Found a valid triangulation!
+                        he_entry = he_grouped.get_group(he_word).iloc[0]
 
-                for he_word in he_translations:
-                    he_match = hebrew_df[hebrew_df["word"] == he_word]
+                        es_defs = (
+                            es_row["definitions"] if isinstance(es_row["definitions"], list) else []
+                        )
+                        he_defs = (
+                            he_entry["definitions"].tolist()
+                            if isinstance(he_entry["definitions"], pd.Series)
+                            else (
+                                he_entry["definitions"]
+                                if isinstance(he_entry["definitions"], list)
+                                else []
+                            )
+                        )
 
-                    if not he_match.empty:
-                        he_entry = he_match.iloc[0]
-                        es_defs = es_row["definitions"] if isinstance(es_row["definitions"], list) else []
-                        he_defs = he_entry["definitions"].tolist() if isinstance(he_entry["definitions"], pd.Series) else (he_entry["definitions"] if isinstance(he_entry["definitions"], list) else [])
-
-                        alignments.append({
-                            "es_word": es_word,
-                            "es_ipa": es_row["ipa"],
-                            "es_pos": es_row["pos"],
-                            "es_definition": es_defs[0] if es_defs else "",
-                            "he_word": he_word,
-                            "he_ipa": he_entry["ipa"],
-                            "he_definition": he_defs[0] if he_defs else "",
-                            "sense_id": 1,
-                            "match_type": "triangulation"
-                        })
+                        alignments.append(
+                            {
+                                "es_word": es_word,
+                                "es_ipa": es_row["ipa"],
+                                "es_pos": es_row["pos"],
+                                "es_definition": es_defs[0] if es_defs else "",
+                                "he_word": he_word,
+                                "he_ipa": he_entry["ipa"],
+                                "he_definition": he_defs[0] if he_defs else "",
+                                "sense_id": 1,
+                                "match_type": "triangulation",
+                                "confidence": 0.9,  # High confidence for triangulation
+                            }
+                        )
                         stats["triangulation"] += 1
                         aligned_es_words.add(es_word)
-                        break  # Only take first triangulated match per word
+                        break  # Only take the first valid match for now
 
-        logger.info(f"Triangulation alignments: {stats['triangulation']}")
+        logger.info(
+            f"Triangulation alignments: {stats['triangulation']} (from {stats_triang_attempt} candidates)"
+        )
 
     # Strategy 3: Fuzzy definition matching (OPTIMIZED with rapidfuzz.process)
     logger.info("Attempting fuzzy definition matching for ALL remaining entries...")
-    aligned_es_words = set(a['es_word'] for a in alignments)
+    aligned_es_words = set(a["es_word"] for a in alignments)
     fuzzy_threshold = 80  # Lowered threshold for better coverage
 
     # Get all remaining Spanish entries, sorted by frequency rank
-    remaining_es = spanish_df[~spanish_df['word'].isin(aligned_es_words)].copy()
+    remaining_es = spanish_df[~spanish_df["word"].isin(aligned_es_words)].copy()
 
     # Sort by frequency rank if available (prioritize common words)
-    if 'frequency_rank' in remaining_es.columns:
-        remaining_es = remaining_es.sort_values('frequency_rank')
+    if "frequency_rank" in remaining_es.columns:
+        remaining_es = remaining_es.sort_values("frequency_rank")
         logger.info(f"Processing {len(remaining_es)} remaining entries by frequency priority...")
     else:
         logger.info(f"Processing {len(remaining_es)} remaining entries...")
@@ -145,12 +197,16 @@ def align_languages(
             he_definitions_list.append(he_def_text)
             he_candidates_dict[he_def_text] = he_row
 
-    logger.info(f"Built index of {len(he_definitions_list)} Hebrew candidates for optimized fuzzy matching")
+    logger.info(
+        f"Built index of {len(he_definitions_list)} Hebrew candidates for optimized fuzzy matching"
+    )
 
     # Process all remaining entries with OPTIMIZED matching using process.extractOne
     for idx, (_, es_row) in enumerate(remaining_es.iterrows()):
         if (idx + 1) % 1000 == 0:
-            logger.info(f"Fuzzy matching progress: {idx + 1}/{len(remaining_es)} ({stats['fuzzy']} matches found)")
+            logger.info(
+                f"Fuzzy matching progress: {idx + 1}/{len(remaining_es)} ({stats['fuzzy']} matches found)"
+            )
 
         es_word = es_row["word"]
         es_defs = es_row["definitions"] if isinstance(es_row["definitions"], list) else []
@@ -163,48 +219,48 @@ def align_languages(
         # OPTIMIZED: Use process.extractOne for O(n log n) instead of O(n²)
         # This is 10-100x faster for large datasets
         result = process.extractOne(
-            es_def_text,
-            he_definitions_list,
-            scorer=fuzz.ratio,
-            score_cutoff=fuzzy_threshold
+            es_def_text, he_definitions_list, scorer=fuzz.ratio, score_cutoff=fuzzy_threshold
         )
 
         if result is not None:
             best_match_def, best_score, _ = result
             best_match = he_candidates_dict[best_match_def]
-            he_defs = best_match["definitions"] if isinstance(best_match["definitions"], list) else []
+            he_defs = (
+                best_match["definitions"] if isinstance(best_match["definitions"], list) else []
+            )
 
-            alignments.append({
-                "es_word": es_word,
-                "es_ipa": es_row["ipa"],
-                "es_pos": es_row["pos"],
-                "es_definition": es_defs[0] if es_defs else "",
-                "he_word": best_match["word"],
-                "he_ipa": best_match["ipa"],
-                "he_definition": he_defs[0] if he_defs else "",
-                "sense_id": 1,
-                "match_type": f"fuzzy_{best_score}",
-                "confidence": best_score / 100.0
-            })
+            alignments.append(
+                {
+                    "es_word": es_word,
+                    "es_ipa": es_row["ipa"],
+                    "es_pos": es_row["pos"],
+                    "es_definition": es_defs[0] if es_defs else "",
+                    "he_word": best_match["word"],
+                    "he_ipa": best_match["ipa"],
+                    "he_definition": he_defs[0] if he_defs else "",
+                    "sense_id": 1,
+                    "match_type": f"fuzzy_{best_score}",
+                    "confidence": best_score / 100.0,
+                }
+            )
             stats["fuzzy"] += 1
 
     logger.info(f"Fuzzy alignments completed: {stats['fuzzy']} matches found (OPTIMIZED algorithm)")
 
     df = pd.DataFrame(alignments)
-    logger.info(f"Total alignments: {len(df)} (direct: {stats['direct']}, triangulation: {stats['triangulation']}, fuzzy: {stats['fuzzy']})")
+    logger.info(
+        f"Total alignments: {len(df)} (direct: {stats['direct']}, triangulation: {stats['triangulation']}, fuzzy: {stats['fuzzy']})"
+    )
     return df
 
 
-def enrich_entries(
-    aligned_df: pd.DataFrame,
-    examples_df: pd.DataFrame
-) -> pd.DataFrame:
+def enrich_entries(aligned_df: pd.DataFrame, examples_df: pd.DataFrame) -> pd.DataFrame:
     """Enrich aligned entries with example sentences from Tatoeba.
-    
+
     Args:
         aligned_df: Aligned Spanish-Hebrew word pairs.
         examples_df: Sentence examples with es_words and he_words fields.
-        
+
     Returns:
         DataFrame with enriched entries including matched examples.
     """
@@ -214,21 +270,15 @@ def enrich_entries(
     for _, row in aligned_df.iterrows():
         # Find matching examples that contain both the Spanish and Hebrew words
         matching_examples = examples_df[
-            (examples_df["es_words"].apply(lambda x: row["es_word"] in x)) &
-            (examples_df["he_words"].apply(lambda x: row["he_word"] in x))
+            (examples_df["es_words"].apply(lambda x: row["es_word"] in x))
+            & (examples_df["he_words"].apply(lambda x: row["he_word"] in x))
         ]
 
         examples = []
         for _, ex in matching_examples.iterrows():
-            examples.append({
-                "es": ex["es"],
-                "he": ex["he"]
-            })
+            examples.append({"es": ex["es"], "he": ex["he"]})
 
-        enriched.append({
-            **row.to_dict(),
-            "examples": examples
-        })
+        enriched.append({**row.to_dict(), "examples": examples})
 
     df = pd.DataFrame(enriched)
     logger.info(f"Enriched {len(df)} entries with examples")
@@ -301,13 +351,13 @@ def cluster_polysemic_senses(enriched_df: pd.DataFrame) -> pd.DataFrame:
 
 def structure_senses(enriched_df: pd.DataFrame) -> List[Dict[str, Any]]:
     """Structure flat data into polysemic JSON format.
-    
+
     Groups entries by Spanish word to handle polysemy (multiple meanings)
     and structures them according to the user's required JSON schema.
-    
+
     Args:
         enriched_df: Enriched DataFrame with all fields.
-        
+
     Returns:
         List of dictionary entries in the final JSON structure.
     """
@@ -328,7 +378,7 @@ def structure_senses(enriched_df: pd.DataFrame) -> List[Dict[str, Any]]:
                 "ipa_hebrew": str(row["he_ipa"]),
                 "hebrew": str(row["he_word"]),
                 "pos": str(row["es_pos"]),
-                "examples": row["examples"] if isinstance(row["examples"], list) else []
+                "examples": row["examples"] if isinstance(row["examples"], list) else [],
             }
             senses.append(sense)
 
@@ -340,10 +390,12 @@ def structure_senses(enriched_df: pd.DataFrame) -> List[Dict[str, Any]]:
                 "ipa": str(group.iloc[0]["es_ipa"]),
                 "language": "es",
                 "etymology": None,
-                "senses": senses
-            }
+                "senses": senses,
+            },
         }
         entries.append(entry)
 
-    logger.info(f"Structured {len(entries)} dictionary entries with {len(enriched_df)} total senses")
+    logger.info(
+        f"Structured {len(entries)} dictionary entries with {len(enriched_df)} total senses"
+    )
     return entries
