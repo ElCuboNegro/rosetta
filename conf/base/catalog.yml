@@ -7,13 +7,28 @@
 # Download nodes output file paths as strings
 es_dump_filepath:
   type: MemoryDataset
-  
+  metadata:
+    kedro-viz:
+      layer: raw
+
 he_dump_filepath:
   type: MemoryDataset
+  metadata:
+    kedro-viz:
+      layer: raw
+
+en_dump_filepath:
+  type: MemoryDataset
+  metadata:
+    kedro-viz:
+      layer: raw
 
 tatoeba_sentences:
   type: pandas.CSVDataset
   filepath: data/01_raw/tatoeba-sample.csv
+  metadata:
+    kedro-viz:
+      layer: raw
   load_args:
     sep: '\t'
     header: null
@@ -23,33 +38,110 @@ tatoeba_sentences:
 # INTERMEDIATE DATA (Harvester pipeline outputs)
 # ============================================================================
 
+raw_spanish_entries_unfiltered:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/raw_spanish_entries_unfiltered.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+raw_hebrew_entries_unfiltered:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/raw_hebrew_entries_unfiltered.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+raw_spanish_entries_filtered:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/raw_spanish_entries_filtered.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+raw_hebrew_entries_filtered:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/raw_hebrew_entries_filtered.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
 raw_spanish_entries:
   type: pandas.ParquetDataset
   filepath: data/02_intermediate/raw_spanish_entries.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
 
 raw_hebrew_entries:
   type: pandas.ParquetDataset
   filepath: data/02_intermediate/raw_hebrew_entries.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+bridge_entries:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/bridge_entries.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
 
 clean_examples:
   type: pandas.ParquetDataset
   filepath: data/02_intermediate/clean_examples.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
 
 # ============================================================================
 # PRIMARY DATA (Aligner pipeline outputs)
 # ============================================================================
 
-aligned_matches:
+language_alignment.aligned_matches:
   type: pandas.ParquetDataset
   filepath: data/03_primary/aligned_matches.parquet
+  metadata:
+    kedro-viz:
+      layer: primary
 
-enriched_entries:
+language_alignment.enriched_entries_raw:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/enriched_entries_raw.parquet
+  metadata:
+    kedro-viz:
+      layer: primary
+
+language_alignment.enriched_entries:
   type: pandas.ParquetDataset
   filepath: data/03_primary/enriched_entries.parquet
+  metadata:
+    kedro-viz:
+      layer: primary
 
 aligned_dictionary:
   type: json.JSONDataset
   filepath: data/03_primary/aligned_dictionary.json
+  save_args:
+    ensure_ascii: False
+    indent: 2
+  fs_args:
+    encoding: utf-8
+  metadata:
+    kedro-viz:
+      layer: primary
+
+aligned_dictionary_with_ipa:
+  type: json.JSONDataset
+  filepath: data/03_primary/aligned_dictionary_with_ipa.json
+  save_args:
+    ensure_ascii: False
+    indent: 2
+  fs_args:
+    encoding: utf-8
+  metadata:
+    kedro-viz:
+      layer: primary
 
 # ============================================================================
 # METRICS & STATISTICS (Pipeline monitoring)
@@ -58,27 +150,47 @@ aligned_dictionary:
 parsing_stats:
   type: json.JSONDataset
   filepath: data/06_metrics/parsing_stats.json
+  metadata:
+    kedro-viz:
+      layer: metrics
 
 parsing_visualizations:
   type: plotly.JSONDataset
   filepath: data/06_metrics/parsing_viz.json
+  metadata:
+    kedro-viz:
+      layer: metrics
 
-alignment_stats:
+metrics_alignment.alignment_stats:
   type: json.JSONDataset
   filepath: data/06_metrics/alignment_stats.json
+  metadata:
+    kedro-viz:
+      layer: metrics
 
 alignment_visualizations:
   type: plotly.JSONDataset
   filepath: data/06_metrics/alignment_viz.json
+  metadata:
+    kedro-viz:
+      layer: metrics
 
 progress_summary:
   type: json.JSONDataset
   filepath: data/06_metrics/progress_summary.json
+  metadata:
+    kedro-viz:
+      layer: metrics
 
 # ============================================================================
 # REPORTING (Final output)
 # ============================================================================
 
 final_dictionary_json:
-  type: json.JSONDataset
+  type: text.TextDataset
   filepath: data/08_reporting/dictionary_v1.json
+  fs_args:
+    encoding: utf-8
+  metadata:
+    kedro-viz:
+      layer: reporting

@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m kedro run:*)",
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(ls:*)",
+      "Bash(tree:*)",
+      "Bash(pip install:*)",
+      "Bash(findstr:*)",
+      "Bash(conda env list:*)",
+      "Bash(conda activate:*)",
+      "Bash(C:Usersjalba.condaenvsrossetapython.exe -c \"import sys; print(''Python:'', sys.executable); from phonikud import phonemize; print(''phonikud imported successfully''); test = phonemize(''שלום''); print(f''Test result: {test}'')\")",
+      "Bash(\"C:\\Users\\jalba\\.conda\\envs\\rosseta\\python.exe\" -c \"import sys; print(''Python:'', sys.executable); from phonikud import phonemize; print(''phonikud imported successfully''); test = phonemize(''שלום''); print(f''Test result: {test}'')\")",
+      "Bash(pip uninstall:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

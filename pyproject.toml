@@ -20,7 +20,25 @@ dependencies = [
     "wiktextract>=1.99.0",
     "lupa==2.2",
     "rapidfuzz>=3.0.0",
-    "pyarrow>=15.0.0"
+    "pyarrow>=15.0.0",
+    "phonikud>=0.5.0",
+    "phonikud-onnx>=0.2.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.5.0",
+    "black>=24.0.0",
+    "ruff>=0.2.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0"
+]
+security = [
+    "safety>=3.0.0",
+    "pip-audit>=2.7.0",
+    "bandit[toml]>=1.7.0"
 ]
 
 [build-system]
@@ -37,14 +55,33 @@ addopts = """
 --cov=rosetta_dict
 --cov-report=html
 --cov-report=term-missing
---cov-fail-under=0
+--cov-fail-under=70
 """
 testpaths = ["tests"]
 
 [tool.coverage.report]
-fail_under = 0
+fail_under = 70
 show_missing = true
 exclude_lines = ["pragma: no cover", "raise NotImplementedError"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]  # Line too long (handled by black)
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311']
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Gradual adoption
+
+[tool.bandit]
+exclude_dirs = ["tests", "docs"]
+skips = ["B101"]  # Allow assert statements
 
 [tool.kedro_telemetry]
 project_id = "866770b797194e05aced725a49332966"

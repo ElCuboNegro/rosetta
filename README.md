@@ -10,19 +10,15 @@ A production-ready Kedro pipeline for generating polysemic Spanish-Hebrew dictio
 pip install -e .
 ```
 
-### 2. Download Wiktionary Dumps (Optional)
+### 2. Run the Pipeline
 
-For real data processing, download the latest Wiktionary dumps:
+The pipeline automatically downloads pre-extracted Wiktionary data from kaikki.org:
 
 ```bash
-# Spanish Wiktionary
-wget https://dumps.wikimedia.org/eswiktionary/latest/eswiktionary-latest-pages-articles.xml.bz2 -O data/01_raw/eswiktionary-latest-pages-articles.xml.bz2
-
-# Hebrew Wiktionary  
-wget https://dumps.wikimedia.org/hewiktionary/latest/hewiktionary-latest-pages-articles.xml.bz2 -O data/01_raw/hewiktionary-latest-pages-articles.xml.bz2
+python -m kedro run
 ```
 
-**Note**: The pipeline works with mock data by default. Real dumps are 100MB-1GB compressed.
+**Note**: On first run, it downloads ~10-50 MB of compressed JSONL data from kaikki.org. This is pre-processed Wiktionary data with all templates and Lua modules already expanded - much faster and more reliable than parsing raw XML dumps.
 
 ### 3. Download Tatoeba Sentences (Optional)
 
@@ -32,24 +28,12 @@ tar -xjf sentences.tar.bz2
 mv sentences.csv data/01_raw/tatoeba-sentences.csv
 ```
 
-### 4. Update Catalog (if using real data)
+### 4. View Results
 
-Edit `conf/base/catalog.yml` to point to the real dump files:
-
-```yaml
-wiktionary_es_dump:
-  type: text.TextDataset
-  filepath: data/01_raw/eswiktionary-latest-pages-articles.xml.bz2
-
-wiktionary_he_dump:
-  type: text.TextDataset
-  filepath: data/01_raw/hewiktionary-latest-pages-articles.xml.bz2
-```
-
-### 5. Run the Pipeline
+After running, check your generated dictionary:
 
 ```bash
-python -m kedro run
+cat data/08_reporting/dictionary_v1.json
 ```
 
 ## Pipeline Architecture
@@ -57,9 +41,10 @@ python -m kedro run
 The dictionary generation is split into three modular pipelines:
 
 ### 1. **data_processing** (Harvester)
-Extracts and parses raw linguistic data:
-- `parse_spanish_wiktionary` - Parses Spanish entries with wiktextract
-- `parse_hebrew_wiktionary` - Parses Hebrew entries with wiktextract  
+Downloads and parses pre-extracted Wiktionary data:
+- `download_kaikki_data` - Downloads JSONL from kaikki.org (pre-processed with wiktextract)
+- `parse_spanish_wiktionary` - Parses Spanish entries from JSONL
+- `parse_hebrew_wiktionary` - Parses Hebrew entries from JSONL
 - `process_tatoeba` - Processes bilingual sentence pairs
 
 ### 2. **data_science** (Aligner)

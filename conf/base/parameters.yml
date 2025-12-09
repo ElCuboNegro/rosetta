@@ -1,11 +1,20 @@
 # Pipeline Parameters
 
-# Wiktionary dump downloads
-wiktionary:
-  # URLs for latest Wiktionary dumps
-  es_dump_url: "https://dumps.wikimedia.org/eswiktionary/latest/eswiktionary-latest-pages-articles.xml.bz2"
-  he_dump_url: "https://dumps.wikimedia.org/hewiktionary/latest/hewiktionary-latest-pages-articles.xml.bz2"
-  
-  # Local paths where dumps will be saved
-  es_dump_path: "data/01_raw/eswiktionary-latest-pages-articles.xml.bz2"
-  he_dump_path: "data/01_raw/hewiktionary-latest-pages-articles.xml.bz2"
+# Pre-extracted Wiktionary data from kaikki.org
+# This is much faster than parsing XML dumps and has all templates/Lua expanded
+# Using multiple languages for triangulation to improve coverage
+kaikki:
+  # Language codes for kaikki.org URLs
+  spanish_lang_code: "es"  # Spanish Wiktionary
+  hebrew_lang_code: "he"    # Hebrew Wiktionary
+  english_lang_code: "en"   # English Wiktionary (for bridge translations)
+  french_lang_code: "fr"    # French Wiktionary (for triangulation)
+  german_lang_code: "de"    # German Wiktionary (for triangulation)
+
+  # Local paths where JSONL files will be saved
+  # Note: kaikki.org provides uncompressed .jsonl files (not .gz)
+  es_data_path: "data/01_raw/es-wiktionary-kaikki.jsonl"
+  he_data_path: "data/01_raw/he-wiktionary-kaikki.jsonl"
+  en_data_path: "data/01_raw/en-wiktionary-kaikki.jsonl"
+  fr_data_path: "data/01_raw/fr-wiktionary-kaikki.jsonl"
+  de_data_path: "data/01_raw/de-wiktionary-kaikki.jsonl"

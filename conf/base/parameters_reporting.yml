@@ -1,0 +1,15 @@
+# Hebrew IPA Generation Parameters
+
+hebrew_ipa:
+  # Hebrew variant for pronunciation generation
+  # Options: "modern" (Modern Israeli), "sephardic" (Traditional), "yiddish"
+  default_variant: "modern"
+  
+  # Use phonikud library if available (recommended)
+  use_phonikud: true
+  
+  # Fallback to rule-based generation if phonikud fails
+  fallback_to_rules: true
+  
+  # Skip entries that already have IPA (don't overwrite)
+  skip_existing: true
