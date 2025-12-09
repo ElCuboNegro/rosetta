@@ -5,11 +5,10 @@ and creating visualizations that Kedro Viz can display in real-time.
 """
 
 import logging
+from typing import Any, Dict
+
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
-from typing import Dict, Any
-from collections import Counter
 
 logger = logging.getLogger(__name__)
 

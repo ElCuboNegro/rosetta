@@ -5,9 +5,10 @@ to prevent silent data degradation in production.
 """
 
 import logging
-import pandas as pd
-from typing import Dict, List, Any, Tuple
 import re
+from typing import Any, Dict, List
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +179,7 @@ def validate_aligned_matches(df: pd.DataFrame) -> pd.DataFrame:
 
     # Log all issues
     if issues:
-        logger.warning(f"Data quality issues in aligned matches:")
+        logger.warning("Data quality issues in aligned matches:")
         for issue in issues:
             logger.warning(f"  - {issue}")
 
@@ -187,7 +188,7 @@ def validate_aligned_matches(df: pd.DataFrame) -> pd.DataFrame:
         if critical_issues:
             raise DataQualityError(f"Critical issues found: {critical_issues}")
 
-    logger.info(f"✓ Validation passed for aligned matches")
+    logger.info("✓ Validation passed for aligned matches")
     return df
 
 
@@ -233,7 +234,7 @@ def validate_enriched_entries(df: pd.DataFrame) -> pd.DataFrame:
             for ex in invalid_examples[:10]:  # Show first 10
                 logger.warning(f"  - {ex}")
 
-    logger.info(f"✓ Validation passed for enriched entries")
+    logger.info("✓ Validation passed for enriched entries")
     return df
 
 
@@ -306,7 +307,7 @@ def validate_final_dictionary(entries: List[Dict[str, Any]]) -> List[Dict[str, A
 
     ipa_coverage = (senses_with_ipa / total_senses * 100) if total_senses > 0 else 0
 
-    logger.info(f"Dictionary quality metrics:")
+    logger.info("Dictionary quality metrics:")
     logger.info(f"  Total entries: {len(entries)}")
     logger.info(f"  Total senses: {total_senses}")
     logger.info(f"  Hebrew IPA coverage: {ipa_coverage:.1f}%")
@@ -328,7 +329,7 @@ def validate_final_dictionary(entries: List[Dict[str, Any]]) -> List[Dict[str, A
         if len(critical_issues) > len(entries) * 0.01:  # More than 1%
             raise DataQualityError(f"Too many critical structural issues: {len(critical_issues)}")
 
-    logger.info(f"✓ Validation passed for final dictionary")
+    logger.info("✓ Validation passed for final dictionary")
     return entries
 
 

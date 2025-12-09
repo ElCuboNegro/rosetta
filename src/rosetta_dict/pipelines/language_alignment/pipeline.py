@@ -2,7 +2,7 @@
 
 from kedro.pipeline import Pipeline, node
 
-from .nodes import align_languages, enrich_entries, cluster_polysemic_senses, structure_senses
+from .nodes import align_languages, cluster_polysemic_senses, enrich_entries, structure_senses
 
 
 def create_pipeline(**kwargs) -> Pipeline:

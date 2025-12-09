@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def add_frequency_ranks(
-    spanish_df: pd.DataFrame, 
+    spanish_df: pd.DataFrame,
     hebrew_df: pd.DataFrame
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Add frequency ranks to word entries based on occurrence patterns.

@@ -5,7 +5,6 @@ into a single dataset for triangulation.
 """
 
 import logging
-from typing import List
 
 import pandas as pd
 
@@ -60,7 +59,7 @@ def combine_bridge_data(
     # Log statistics
     es_count = len(combined_df[combined_df['source_lang'] == 'es'])
     he_count = len(combined_df[combined_df['source_lang'] == 'he'])
-    
+
     logger.info(f"Final bridge data: {es_count} Spanish entries, {he_count} Hebrew entries")
 
     return combined_df

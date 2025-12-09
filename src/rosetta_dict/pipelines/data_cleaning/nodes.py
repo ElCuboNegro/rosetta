@@ -64,10 +64,10 @@ def _is_likely_proper_noun(word: str) -> bool:
     """
     if not isinstance(word, str) or not word:
         return False
-    
+
     # Skip if it's a common abbreviation
     if word in COMMON_ABBREVIATIONS:
         return False
-    
+
     # Check if first letter is uppercase
     return word[0].isupper()

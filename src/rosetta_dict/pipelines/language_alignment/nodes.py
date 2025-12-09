@@ -5,8 +5,9 @@ fuzzy matching (rapidfuzz) and enriches entries with example sentences.
 """
 
 import logging
+from typing import Any, Dict, List
+
 import pandas as pd
-from typing import List, Dict, Any
 from rapidfuzz import fuzz, process
 
 logger = logging.getLogger(__name__)
@@ -208,7 +209,7 @@ def enrich_entries(
         DataFrame with enriched entries including matched examples.
     """
     logger.info("Enriching entries with example sentences...")
-    
+
     enriched = []
     for _, row in aligned_df.iterrows():
         # Find matching examples that contain both the Spanish and Hebrew words
@@ -216,19 +217,19 @@ def enrich_entries(
             (examples_df["es_words"].apply(lambda x: row["es_word"] in x)) &
             (examples_df["he_words"].apply(lambda x: row["he_word"] in x))
         ]
-        
+
         examples = []
         for _, ex in matching_examples.iterrows():
             examples.append({
                 "es": ex["es"],
                 "he": ex["he"]
             })
-        
+
         enriched.append({
             **row.to_dict(),
             "examples": examples
         })
-    
+
     df = pd.DataFrame(enriched)
     logger.info(f"Enriched {len(df)} entries with examples")
     return df
@@ -311,10 +312,10 @@ def structure_senses(enriched_df: pd.DataFrame) -> List[Dict[str, Any]]:
         List of dictionary entries in the final JSON structure.
     """
     logger.info("Structuring entries into polysemic JSON format...")
-    
+
     # Group by Spanish word to handle polysemy
     grouped = enriched_df.groupby("es_word")
-    
+
     entries = []
     for es_word, group in grouped:
         # Create senses for each meaning/translation
@@ -330,7 +331,7 @@ def structure_senses(enriched_df: pd.DataFrame) -> List[Dict[str, Any]]:
                 "examples": row["examples"] if isinstance(row["examples"], list) else []
             }
             senses.append(sense)
-        
+
         # Create the entry structure
         entry = {
             "id": f"es: {es_word}",
@@ -343,6 +344,6 @@ def structure_senses(enriched_df: pd.DataFrame) -> List[Dict[str, Any]]:
             }
         }
         entries.append(entry)
-    
+
     logger.info(f"Structured {len(entries)} dictionary entries with {len(enriched_df)} total senses")
     return entries

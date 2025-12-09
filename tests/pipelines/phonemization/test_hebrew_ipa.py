@@ -1,6 +1,7 @@
 """Tests for Hebrew IPA generation accuracy."""
 
 import pytest
+
 from rosetta_dict.pipelines.phonemization.hebrew_ipa_generator import (
     HebrewIPAGenerator,
     generate_hebrew_ipa_for_entries,
@@ -24,9 +25,9 @@ class TestHebrewIPAGeneration:
         """Test common Hebrew words generate valid IPA."""
         test_cases = [
             ("שלום", "ʃalom"),  # shalom (peace) - common greeting
-            ("בית", "bajit"),   # bayit (house)
-            ("ספר", "sefer"),   # sefer (book)
-            ("מים", "majim"),   # mayim (water)
+            ("בית", "bajit"),  # bayit (house)
+            ("ספר", "sefer"),  # sefer (book)
+            ("מים", "majim"),  # mayim (water)
         ]
 
         for hebrew, expected_substring in test_cases:
@@ -53,28 +54,28 @@ class TestHebrewIPAGeneration:
         """Test rule-based consonant mapping."""
         # Test individual consonants
         consonant_tests = [
-            ("א", "ʔ"),    # alef
-            ("ב", "b"),    # bet
-            ("ג", "ɡ"),    # gimel
-            ("ד", "d"),    # dalet
-            ("ה", "h"),    # he
-            ("ו", "v"),    # vav
-            ("ז", "z"),    # zayin
-            ("ח", "χ"),    # chet
-            ("ט", "t"),    # tet
-            ("י", "j"),    # yod
-            ("כ", "k"),    # kaf
-            ("ל", "l"),    # lamed
-            ("מ", "m"),    # mem
-            ("נ", "n"),    # nun
-            ("ס", "s"),    # samekh
-            ("ע", "ʔ"),    # ayin
-            ("פ", "p"),    # pe
-            ("צ", "ts"),   # tsadi
-            ("ק", "k"),    # qof
-            ("ר", "ʁ"),    # resh
-            ("ש", "ʃ"),    # shin
-            ("ת", "t"),    # tav
+            ("א", "ʔ"),  # alef
+            ("ב", "b"),  # bet
+            ("ג", "ɡ"),  # gimel
+            ("ד", "d"),  # dalet
+            ("ה", "h"),  # he
+            ("ו", "v"),  # vav
+            ("ז", "z"),  # zayin
+            ("ח", "χ"),  # chet
+            ("ט", "t"),  # tet
+            ("י", "j"),  # yod
+            ("כ", "k"),  # kaf
+            ("ל", "l"),  # lamed
+            ("מ", "m"),  # mem
+            ("נ", "n"),  # nun
+            ("ס", "s"),  # samekh
+            ("ע", "ʔ"),  # ayin
+            ("פ", "p"),  # pe
+            ("צ", "ts"),  # tsadi
+            ("ק", "k"),  # qof
+            ("ר", "ʁ"),  # resh
+            ("ש", "ʃ"),  # shin
+            ("ת", "t"),  # tav
         ]
 
         for hebrew_char, expected_ipa in consonant_tests:
@@ -87,10 +88,10 @@ class TestHebrewIPAGeneration:
     def test_final_letters(self, generator_rules_only):
         """Test Hebrew final form letters."""
         final_letter_tests = [
-            ("ך", "χ"),   # final khaf
-            ("ם", "m"),   # final mem
-            ("ן", "n"),   # final nun
-            ("ף", "f"),   # final fe
+            ("ך", "χ"),  # final khaf
+            ("ם", "m"),  # final mem
+            ("ן", "n"),  # final nun
+            ("ף", "f"),  # final fe
             ("ץ", "ts"),  # final tsadi
         ]
 
@@ -113,7 +114,7 @@ class TestHebrewIPAGeneration:
     def test_non_hebrew_characters(self, generator_modern):
         """Test handling of non-Hebrew characters."""
         # Should handle gracefully, may skip non-Hebrew chars
-        result = generator_modern.generate_ipa("hello")
+        generator_modern.generate_ipa("hello")
         # Depending on implementation, might return None or empty
         # Just verify it doesn't crash
 
@@ -135,7 +136,7 @@ class TestHebrewIPAGeneration:
 
     def test_no_fallback_returns_none(self):
         """Test that without fallback, failures return None."""
-        generator = HebrewIPAGenerator(use_phonikud=False, fallback_to_rules=False)
+        HebrewIPAGenerator(use_phonikud=False, fallback_to_rules=False)
 
         # With both disabled, should return None
         # (Actually, this configuration is not useful, but tests the logic)
@@ -163,10 +164,10 @@ class TestHebrewIPAForEntries:
                             "ipa_hebrew": "",  # Empty, should be generated
                             "hebrew": "בית",
                             "pos": "noun",
-                            "examples": []
+                            "examples": [],
                         }
-                    ]
-                }
+                    ],
+                },
             },
             {
                 "id": "es: libro",
@@ -182,11 +183,11 @@ class TestHebrewIPAForEntries:
                             "ipa_hebrew": "/se.fer/",  # Already has IPA
                             "hebrew": "ספר",
                             "pos": "noun",
-                            "examples": []
+                            "examples": [],
                         }
-                    ]
-                }
-            }
+                    ],
+                },
+            },
         ]
 
     def test_generate_ipa_for_empty_fields(self, sample_entries):
@@ -229,17 +230,17 @@ class TestHebrewIPAForEntries:
                             "ipa_hebrew": "",
                             "hebrew": "",  # Empty Hebrew word
                             "pos": "noun",
-                            "examples": []
+                            "examples": [],
                         }
-                    ]
-                }
+                    ],
+                },
             }
         ]
 
-        result = generate_hebrew_ipa_for_entries(entries)
+        generate_hebrew_ipa_for_entries(entries)
 
         # Should handle gracefully, ipa_hebrew remains empty
-        sense = result[0]["entry"]["senses"][0]
+
         # Implementation should skip this entry
 
 
@@ -368,7 +369,8 @@ class TestCoverageMetrics:
         # Calculate coverage
         total_senses = sum(len(e["entry"]["senses"]) for e in result)
         with_ipa = sum(
-            1 for e in result
+            1
+            for e in result
             for s in e["entry"]["senses"]
             if s.get("ipa_hebrew") and s["ipa_hebrew"] != ""
         )
@@ -411,8 +413,9 @@ class TestHebrewIPAAccuracyAgainstRealData:
         This is the authoritative source - Hebrew words that came from Wiktionary
         with their actual IPA pronunciations.
         """
-        import pandas as pd
         from pathlib import Path
+
+        import pandas as pd
 
         # Try multiple possible sources for Hebrew IPA data
         possible_paths = [
@@ -437,11 +440,11 @@ class TestHebrewIPAAccuracyAgainstRealData:
 
                 # Filter to valid entries
                 hebrew_data = hebrew_data[
-                    (hebrew_data["he_word"].notna()) &
-                    (hebrew_data["he_word"] != "") &
-                    (hebrew_data["he_ipa"].notna()) &
-                    (hebrew_data["he_ipa"] != "") &
-                    (hebrew_data["he_ipa"].str.len() > 2)  # At least "/X/"
+                    (hebrew_data["he_word"].notna())
+                    & (hebrew_data["he_word"] != "")
+                    & (hebrew_data["he_ipa"].notna())
+                    & (hebrew_data["he_ipa"] != "")
+                    & (hebrew_data["he_ipa"].str.len() > 2)  # At least "/X/"
                 ]
 
                 if len(hebrew_data) > 0:
@@ -455,7 +458,9 @@ class TestHebrewIPAAccuracyAgainstRealData:
         """IPA generator instance."""
         return HebrewIPAGenerator(variant="modern", use_phonikud=True, fallback_to_rules=True)
 
-    def test_validate_ipa_against_wiktionary_ground_truth(self, hebrew_reference_data, ipa_generator):
+    def test_validate_ipa_against_wiktionary_ground_truth(
+        self, hebrew_reference_data, ipa_generator
+    ):
         """Validate IPA generation against existing Hebrew words from Wiktionary.
 
         This is the CRITICAL test - it validates our IPA generation algorithm
@@ -481,7 +486,7 @@ class TestHebrewIPAAccuracyAgainstRealData:
             method_counts[result["method"]] += 1
 
             # Log progress for large datasets
-            if (len(validation_results) % 100 == 0):
+            if len(validation_results) % 100 == 0:
                 print(f"  Validated {len(validation_results)} words...")
 
         # Calculate accuracy metrics
@@ -496,23 +501,29 @@ class TestHebrewIPAAccuracyAgainstRealData:
             high_similarity_rate = high_similarity / total
             medium_similarity_rate = medium_similarity / total
 
-            print(f"\n{'='*80}")
+            print(f"\n{'=' * 80}")
             print("IPA VALIDATION RESULTS (Against Wiktionary Ground Truth)")
-            print(f"{'='*80}")
+            print(f"{'=' * 80}")
             print(f"Total words tested: {total}")
-            print(f"\nAccuracy Metrics:")
+            print("\nAccuracy Metrics:")
             print(f"  Exact matches:           {exact_matches:4d} ({exact_match_rate:.1%})")
             print(f"  High similarity (>=70%):  {high_similarity:4d} ({high_similarity_rate:.1%})")
-            print(f"  Medium similarity (>=50%): {medium_similarity:4d} ({medium_similarity_rate:.1%})")
+            print(
+                f"  Medium similarity (>=50%): {medium_similarity:4d} ({medium_similarity_rate:.1%})"
+            )
 
-            print(f"\nGeneration Methods Used:")
-            print(f"  phonikud library: {method_counts['phonikud']:4d} ({method_counts['phonikud']/total:.1%})")
-            print(f"  Rule-based:       {method_counts['rules']:4d} ({method_counts['rules']/total:.1%})")
+            print("\nGeneration Methods Used:")
+            print(
+                f"  phonikud library: {method_counts['phonikud']:4d} ({method_counts['phonikud'] / total:.1%})"
+            )
+            print(
+                f"  Rule-based:       {method_counts['rules']:4d} ({method_counts['rules'] / total:.1%})"
+            )
 
             # Show examples of good matches
             good_matches = [r for r in validation_results if r["exact_match"]][:5]
             if good_matches:
-                print(f"\nExample EXACT matches:")
+                print("\nExample EXACT matches:")
                 for match in good_matches:
                     print(f"  [OK] {match['hebrew']}: {match['existing_ipa']}")
 
@@ -520,11 +531,11 @@ class TestHebrewIPAAccuracyAgainstRealData:
             differences = sorted(
                 [r for r in validation_results if not r["exact_match"]],
                 key=lambda x: x["similarity"],
-                reverse=True
+                reverse=True,
             )[:10]
 
             if differences:
-                print(f"\nExample differences (sorted by similarity):")
+                print("\nExample differences (sorted by similarity):")
                 for diff in differences:
                     if diff["similarity"] >= 0.7:
                         similarity_indicator = "[GOOD]"
@@ -532,15 +543,17 @@ class TestHebrewIPAAccuracyAgainstRealData:
                         similarity_indicator = "[OK]  "
                     else:
                         similarity_indicator = "[BAD] "
-                    print(f"  {similarity_indicator} {diff['hebrew']}: (similarity: {diff['similarity']:.1%})")
+                    print(
+                        f"  {similarity_indicator} {diff['hebrew']}: (similarity: {diff['similarity']:.1%})"
+                    )
                     print(f"      Reference (Wiktionary): {diff['existing_ipa']}")
                     print(f"      Generated (Our algo):   {diff['generated_ipa']}")
                     print(f"      Method: {diff['method']}")
 
             # Quality thresholds based on real-world expectations
-            print(f"\n{'='*80}")
+            print(f"\n{'=' * 80}")
             print("Quality Assessment:")
-            print(f"{'='*80}")
+            print(f"{'=' * 80}")
 
             # Different IPA transcription systems may vary slightly
             # We validate at multiple levels:
@@ -569,7 +582,7 @@ class TestHebrewIPAAccuracyAgainstRealData:
             else:
                 print(f"[POOR] {medium_similarity_rate:.1%} medium+ similarity")
 
-            print(f"{'='*80}\n")
+            print(f"{'=' * 80}\n")
 
             # ASSERTIONS WITH REALISTIC THRESHOLDS
             # Based on actual testing against 2,426 Hebrew words from Wiktionary
@@ -593,10 +606,12 @@ class TestHebrewIPAAccuracyAgainstRealData:
             # Once we understand the IPA notation differences, we can set appropriate thresholds
             assert total > 0, "No Hebrew words tested - this should not happen"
 
-            print(f"\n[VALIDATION COMPLETE]")
-            print(f"   This test validates our IPA generation against {total} real Wiktionary words.")
-            print(f"   Current results show we use different IPA notation than Wiktionary.")
-            print(f"   This is tracked as a known issue for future improvement.")
+            print("\n[VALIDATION COMPLETE]")
+            print(
+                f"   This test validates our IPA generation against {total} real Wiktionary words."
+            )
+            print("   Current results show we use different IPA notation than Wiktionary.")
+            print("   This is tracked as a known issue for future improvement.")
 
     def test_consistency_across_regeneration(self, hebrew_reference_data, ipa_generator):
         """Test that IPA generation is consistent across multiple runs."""

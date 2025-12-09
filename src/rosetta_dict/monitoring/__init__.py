@@ -1,7 +1,7 @@
 """Monitoring and alerting infrastructure."""
 
+from .alerts import AlertManager
 from .health import HealthCheck
 from .metrics import MetricsCollector
-from .alerts import AlertManager
 
 __all__ = ["HealthCheck", "MetricsCollector", "AlertManager"]

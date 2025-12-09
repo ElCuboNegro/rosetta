@@ -40,7 +40,7 @@ def register_pipelines() -> dict[str, Pipeline]:
         all_inputs = pipe.inputs()
         params = {n: n for n in all_inputs if n.startswith("params:") or n == "parameters"}
         inputs = {n: n for n in all_inputs if n not in params}
-        
+
         # Manually wire metrics_alignment to read from language_alignment intermediates
         if name == "metrics_alignment":
             if "aligned_matches" in inputs:
@@ -57,8 +57,8 @@ def register_pipelines() -> dict[str, Pipeline]:
             outputs={ds: ds for ds in pipe.outputs()},
             parameters=params,
         )
-    
+
     # Create the default pipeline by combining all namespaced pipelines
     pipelines["__default__"] = sum(pipelines.values())
-    
+
     return pipelines

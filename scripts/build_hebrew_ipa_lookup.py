@@ -5,10 +5,13 @@ and generates a Python dictionary for use in the IPA generator.
 """
 
 import sys
+
 sys.stdout.reconfigure(encoding='utf-8')
 
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+
 
 def build_lookup_table():
     """Build IPA lookup table from Wiktionary data."""

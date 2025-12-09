@@ -1,10 +1,10 @@
 """Health check system for monitoring pipeline status."""
 
+import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
-import json
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 

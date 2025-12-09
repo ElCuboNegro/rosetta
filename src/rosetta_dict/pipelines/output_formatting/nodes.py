@@ -6,7 +6,7 @@ This module creates the final JSON output with metadata and proper structure.
 import json
 import logging
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 

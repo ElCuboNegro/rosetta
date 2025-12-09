@@ -5,11 +5,14 @@ to identify patterns and improve the generation algorithm.
 """
 
 import sys
+
 sys.stdout.reconfigure(encoding='utf-8')
 
-import pandas as pd
-from pathlib import Path
 from collections import Counter
+from pathlib import Path
+
+import pandas as pd
+
 from rosetta_dict.pipelines.phonemization.hebrew_ipa_generator import HebrewIPAGenerator
 
 
@@ -130,7 +133,7 @@ def analyze_ipa_patterns():
         from phonikud import phonemize
         test_word = "שלום"
         result = phonemize(test_word)
-        print(f"✓ phonikud is available")
+        print("✓ phonikud is available")
         print(f"  Test: {test_word} → {result}")
     except ImportError:
         print("✗ phonikud library NOT available")

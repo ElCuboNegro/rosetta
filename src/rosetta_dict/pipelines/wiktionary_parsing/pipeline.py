@@ -3,11 +3,11 @@
 from kedro.pipeline import Pipeline, node
 
 from .nodes import (
-    parse_spanish_wiktionary,
-    parse_hebrew_wiktionary,
     parse_english_wiktionary,
     parse_french_wiktionary,
     parse_german_wiktionary,
+    parse_hebrew_wiktionary,
+    parse_spanish_wiktionary,
 )
 
 

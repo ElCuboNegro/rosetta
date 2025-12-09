@@ -4,9 +4,11 @@ These tests measure the performance of critical operations to ensure
 the system can scale to production workloads (10,000+ entries).
 """
 
+import time
+
 import pandas as pd
 import pytest
-import time
+
 from rosetta_dict.pipelines.language_alignment.nodes import align_languages
 
 
@@ -16,6 +18,7 @@ class TestAlignmentPerformance:
     @pytest.fixture
     def generate_test_data(self):
         """Generate test data of various sizes for benchmarking."""
+
         def _generator(n_spanish, n_hebrew):
             """Generate n Spanish and Hebrew entries."""
             spanish_data = {
@@ -23,11 +26,13 @@ class TestAlignmentPerformance:
                 "ipa": [f"ipa{i}" for i in range(n_spanish)],
                 "pos": ["noun"] * n_spanish,
                 "definitions": [[f"Definición {i} con algo de texto"] for i in range(n_spanish)],
-                "translations_he": [[] for _ in range(n_spanish)],  # No direct translations to force fuzzy
+                "translations_he": [
+                    [] for _ in range(n_spanish)
+                ],  # No direct translations to force fuzzy
                 "translations_en": [[] for _ in range(n_spanish)],
                 "translations_fr": [[] for _ in range(n_spanish)],
                 "translations_de": [[] for _ in range(n_spanish)],
-                "frequency_rank": list(range(1, n_spanish + 1))
+                "frequency_rank": list(range(1, n_spanish + 1)),
             }
 
             hebrew_data = {
@@ -35,7 +40,7 @@ class TestAlignmentPerformance:
                 "ipa": [f"/ipa{i}/" for i in range(n_hebrew)],
                 "pos": ["noun"] * n_hebrew,
                 "definitions": [[f"הגדרה {i} עם טקסט"] for i in range(n_hebrew)],
-                "translations_es": [[] for _ in range(n_hebrew)]
+                "translations_es": [[] for _ in range(n_hebrew)],
             }
 
             return pd.DataFrame(spanish_data), pd.DataFrame(hebrew_data)
@@ -51,10 +56,10 @@ class TestAlignmentPerformance:
         result = align_languages(spanish_df, hebrew_df)
         elapsed = time.time() - start_time
 
-        print(f"\nSmall dataset (100x100):")
+        print("\nSmall dataset (100x100):")
         print(f"  Time: {elapsed:.2f}s")
         print(f"  Alignments: {len(result)}")
-        print(f"  Rate: {len(spanish_df)/elapsed:.1f} entries/sec")
+        print(f"  Rate: {len(spanish_df) / elapsed:.1f} entries/sec")
 
         # Should complete quickly
         assert elapsed < 10.0, f"Small dataset too slow: {elapsed:.2f}s"
@@ -68,10 +73,10 @@ class TestAlignmentPerformance:
         result = align_languages(spanish_df, hebrew_df)
         elapsed = time.time() - start_time
 
-        print(f"\nMedium dataset (1000x1000):")
+        print("\nMedium dataset (1000x1000):")
         print(f"  Time: {elapsed:.2f}s")
         print(f"  Alignments: {len(result)}")
-        print(f"  Rate: {len(spanish_df)/elapsed:.1f} entries/sec")
+        print(f"  Rate: {len(spanish_df) / elapsed:.1f} entries/sec")
 
         # With optimization should complete in reasonable time
         # Old algorithm: ~30+ minutes for 10k entries
@@ -88,10 +93,10 @@ class TestAlignmentPerformance:
         result = align_languages(spanish_df, hebrew_df)
         elapsed = time.time() - start_time
 
-        print(f"\nLarge dataset (5000x5000):")
+        print("\nLarge dataset (5000x5000):")
         print(f"  Time: {elapsed:.2f}s")
         print(f"  Alignments: {len(result)}")
-        print(f"  Rate: {len(spanish_df)/elapsed:.1f} entries/sec")
+        print(f"  Rate: {len(spanish_df) / elapsed:.1f} entries/sec")
 
         # Should scale reasonably (target: < 10 minutes for 5k)
         assert elapsed < 600.0, f"Large dataset too slow: {elapsed:.2f}s"
@@ -119,14 +124,13 @@ class TestAlignmentPerformance:
 
         # Ratio of time increase vs size increase
         time_ratio_1 = times[1] / times[0]  # 200/100
-        size_ratio = 2.0
 
         # Time ratio should be < size_ratio² (would indicate O(n²))
         # Ideally close to size_ratio * log(size_ratio) for O(n log n)
-        print(f"\nComplexity analysis:")
+        print("\nComplexity analysis:")
         print(f"  Time ratio (2x size): {time_ratio_1:.2f}")
-        print(f"  Expected for O(n²): ~4.0")
-        print(f"  Expected for O(n log n): ~2.0")
+        print("  Expected for O(n²): ~4.0")
+        print("  Expected for O(n log n): ~2.0")
 
         # With optimization, should not be quadratic
         assert time_ratio_1 < 3.5, (
@@ -141,6 +145,7 @@ class TestMemoryUsage:
     @pytest.fixture
     def generate_test_data(self):
         """Generate test data for memory testing."""
+
         def _generator(n):
             spanish_data = {
                 "word": [f"palabra{i}" for i in range(n)],
@@ -151,14 +156,14 @@ class TestMemoryUsage:
                 "translations_en": [[] for _ in range(n)],
                 "translations_fr": [[] for _ in range(n)],
                 "translations_de": [[] for _ in range(n)],
-                "frequency_rank": list(range(1, n + 1))
+                "frequency_rank": list(range(1, n + 1)),
             }
             hebrew_data = {
                 "word": [f"מילה{i}" for i in range(n)],
                 "ipa": [f"/ipa{i}/" for i in range(n)],
                 "pos": ["noun"] * n,
                 "definitions": [[f"הגדרה {i}"] for i in range(n)],
-                "translations_es": [[] for _ in range(n)]
+                "translations_es": [[] for _ in range(n)],
             }
             return pd.DataFrame(spanish_data), pd.DataFrame(hebrew_data)
 
@@ -189,33 +194,37 @@ class TestAlignmentQuality:
     @pytest.fixture
     def real_test_data(self):
         """Use realistic test data to verify quality."""
-        spanish_df = pd.DataFrame({
-            "word": ["casa", "perro", "libro"],
-            "ipa": ["ˈka.sa", "ˈpe.ro", "ˈli.bɾo"],
-            "pos": ["noun", "noun", "noun"],
-            "definitions": [
-                ["Edificio para habitar"],
-                ["Animal doméstico canino"],
-                ["Obra escrita con páginas"]
-            ],
-            "translations_he": [[], [], []],  # Force fuzzy matching
-            "translations_en": [[], [], []],
-            "translations_fr": [[], [], []],
-            "translations_de": [[], [], []],
-            "frequency_rank": [1, 2, 3]
-        })
+        spanish_df = pd.DataFrame(
+            {
+                "word": ["casa", "perro", "libro"],
+                "ipa": ["ˈka.sa", "ˈpe.ro", "ˈli.bɾo"],
+                "pos": ["noun", "noun", "noun"],
+                "definitions": [
+                    ["Edificio para habitar"],
+                    ["Animal doméstico canino"],
+                    ["Obra escrita con páginas"],
+                ],
+                "translations_he": [[], [], []],  # Force fuzzy matching
+                "translations_en": [[], [], []],
+                "translations_fr": [[], [], []],
+                "translations_de": [[], [], []],
+                "frequency_rank": [1, 2, 3],
+            }
+        )
 
-        hebrew_df = pd.DataFrame({
-            "word": ["בית", "כלב", "ספר"],
-            "ipa": ["/ba.jit/", "/ke.lev/", "/se.fer/"],
-            "pos": ["noun", "noun", "noun"],
-            "definitions": [
-                ["Casa, edificio residencial"],
-                ["Animal doméstico de la familia canina"],
-                ["Libro, obra literaria con páginas"]
-            ],
-            "translations_es": [[], [], []]
-        })
+        hebrew_df = pd.DataFrame(
+            {
+                "word": ["בית", "כלב", "ספר"],
+                "ipa": ["/ba.jit/", "/ke.lev/", "/se.fer/"],
+                "pos": ["noun", "noun", "noun"],
+                "definitions": [
+                    ["Casa, edificio residencial"],
+                    ["Animal doméstico de la familia canina"],
+                    ["Libro, obra literaria con páginas"],
+                ],
+                "translations_es": [[], [], []],
+            }
+        )
 
         return spanish_df, hebrew_df
 
@@ -260,44 +269,50 @@ class TestPerformanceRegression:
     def benchmark_baseline(self):
         """Baseline performance expectations."""
         return {
-            "100_entries": 10.0,    # Max 10 seconds for 100 entries
+            "100_entries": 10.0,  # Max 10 seconds for 100 entries
             "1000_entries": 120.0,  # Max 2 minutes for 1000 entries
-            "entries_per_sec": 8.0  # Min 8 entries/sec processing rate
+            "entries_per_sec": 8.0,  # Min 8 entries/sec processing rate
         }
 
     @pytest.mark.benchmark
     def test_meets_performance_sla(self, benchmark_baseline):
         """Verify system meets performance SLA."""
         # Generate 100 entry test
-        spanish_df = pd.DataFrame({
-            "word": [f"palabra{i}" for i in range(100)],
-            "ipa": [f"ipa{i}" for i in range(100)],
-            "pos": ["noun"] * 100,
-            "definitions": [[f"Definición {i}"] for i in range(100)],
-            "translations_he": [[] for _ in range(100)],
-            "translations_en": [[] for _ in range(100)],
-            "translations_fr": [[] for _ in range(100)],
-            "translations_de": [[] for _ in range(100)],
-            "frequency_rank": list(range(1, 101))
-        })
+        spanish_df = pd.DataFrame(
+            {
+                "word": [f"palabra{i}" for i in range(100)],
+                "ipa": [f"ipa{i}" for i in range(100)],
+                "pos": ["noun"] * 100,
+                "definitions": [[f"Definición {i}"] for i in range(100)],
+                "translations_he": [[] for _ in range(100)],
+                "translations_en": [[] for _ in range(100)],
+                "translations_fr": [[] for _ in range(100)],
+                "translations_de": [[] for _ in range(100)],
+                "frequency_rank": list(range(1, 101)),
+            }
+        )
 
-        hebrew_df = pd.DataFrame({
-            "word": [f"מילה{i}" for i in range(100)],
-            "ipa": [f"/ipa{i}/" for i in range(100)],
-            "pos": ["noun"] * 100,
-            "definitions": [[f"הגדרה {i}"] for i in range(100)],
-            "translations_es": [[] for _ in range(100)]
-        })
+        hebrew_df = pd.DataFrame(
+            {
+                "word": [f"מילה{i}" for i in range(100)],
+                "ipa": [f"/ipa{i}/" for i in range(100)],
+                "pos": ["noun"] * 100,
+                "definitions": [[f"הגדרה {i}"] for i in range(100)],
+                "translations_es": [[] for _ in range(100)],
+            }
+        )
 
         start_time = time.time()
-        result = align_languages(spanish_df, hebrew_df)
+        align_languages(spanish_df, hebrew_df)
         elapsed = time.time() - start_time
 
         entries_per_sec = len(spanish_df) / elapsed
 
-        print(f"\nPerformance SLA check:")
+        print("\nPerformance SLA check:")
         print(f"  Time: {elapsed:.2f}s (SLA: <{benchmark_baseline['100_entries']}s)")
-        print(f"  Rate: {entries_per_sec:.1f} entries/sec (SLA: >{benchmark_baseline['entries_per_sec']})")
+        print(
+            f"  Rate: {entries_per_sec:.1f} entries/sec (SLA: >{benchmark_baseline['entries_per_sec']})"
+        )
 
         assert elapsed < benchmark_baseline["100_entries"], (
             f"Performance SLA violated: {elapsed:.2f}s > {benchmark_baseline['100_entries']}s"

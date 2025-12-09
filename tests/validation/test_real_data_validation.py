@@ -6,9 +6,11 @@ data integrity.
 """
 
 import json
+from pathlib import Path
+
 import pandas as pd
 import pytest
-from pathlib import Path
+
 from rosetta_dict.pipelines.phonemization.hebrew_ipa_generator import HebrewIPAGenerator
 
 
@@ -36,14 +38,14 @@ class TestRealDataValidation:
         if not dictionary_path.exists():
             pytest.skip(f"Dictionary not found at {dictionary_path}. Run pipeline first.")
 
-        with open(dictionary_path, 'r', encoding='utf-8') as f:
+        with open(dictionary_path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     @pytest.fixture
     def enriched_df(self, enriched_entries_path):
         """Load enriched entries DataFrame."""
         if not enriched_entries_path.exists():
-            pytest.skip(f"Enriched entries not found. Run pipeline first.")
+            pytest.skip("Enriched entries not found. Run pipeline first.")
 
         return pd.read_parquet(enriched_entries_path)
 
@@ -123,25 +125,29 @@ class TestRealDataValidation:
                 if ipa and ipa != "" and ipa != "None":
                     # Should be wrapped in slashes
                     if not (ipa.startswith("/") and ipa.endswith("/")):
-                        invalid_ipa.append({
-                            "word": entry["entry"]["word"],
-                            "hebrew": sense["hebrew"],
-                            "ipa": ipa,
-                            "issue": "Not wrapped in slashes"
-                        })
+                        invalid_ipa.append(
+                            {
+                                "word": entry["entry"]["word"],
+                                "hebrew": sense["hebrew"],
+                                "ipa": ipa,
+                                "issue": "Not wrapped in slashes",
+                            }
+                        )
 
                     # Should have content between slashes
                     if len(ipa) < 3:  # At least "/X/"
-                        invalid_ipa.append({
-                            "word": entry["entry"]["word"],
-                            "hebrew": sense["hebrew"],
-                            "ipa": ipa,
-                            "issue": "Too short"
-                        })
+                        invalid_ipa.append(
+                            {
+                                "word": entry["entry"]["word"],
+                                "hebrew": sense["hebrew"],
+                                "ipa": ipa,
+                                "issue": "Too short",
+                            }
+                        )
 
         assert len(invalid_ipa) == 0, (
-            f"Found {len(invalid_ipa)} invalid IPA entries:\n" +
-            "\n".join(str(x) for x in invalid_ipa[:10])
+            f"Found {len(invalid_ipa)} invalid IPA entries:\n"
+            + "\n".join(str(x) for x in invalid_ipa[:10])
         )
 
     def test_hebrew_character_validation(self, dictionary_data):
@@ -169,15 +175,17 @@ class TestRealDataValidation:
                     hebrew_chars = [c for c in hebrew if is_hebrew_char(c)]
 
                     if len(hebrew_chars) == 0:
-                        invalid_hebrew.append({
-                            "word": entry["entry"]["word"],
-                            "hebrew": hebrew,
-                            "issue": "No Hebrew characters found"
-                        })
+                        invalid_hebrew.append(
+                            {
+                                "word": entry["entry"]["word"],
+                                "hebrew": hebrew,
+                                "issue": "No Hebrew characters found",
+                            }
+                        )
 
         assert len(invalid_hebrew) == 0, (
-            f"Found {len(invalid_hebrew)} invalid Hebrew entries:\n" +
-            "\n".join(str(x) for x in invalid_hebrew[:10])
+            f"Found {len(invalid_hebrew)} invalid Hebrew entries:\n"
+            + "\n".join(str(x) for x in invalid_hebrew[:10])
         )
 
     def test_sense_ids_are_valid(self, dictionary_data):
@@ -191,23 +199,27 @@ class TestRealDataValidation:
 
             # Should start at 1
             if min(sense_ids) < 1:
-                invalid_sense_ids.append({
-                    "word": entry["entry"]["word"],
-                    "sense_ids": sense_ids,
-                    "issue": "Sense ID less than 1"
-                })
+                invalid_sense_ids.append(
+                    {
+                        "word": entry["entry"]["word"],
+                        "sense_ids": sense_ids,
+                        "issue": "Sense ID less than 1",
+                    }
+                )
 
             # Should be unique within entry
             if len(sense_ids) != len(set(sense_ids)):
-                invalid_sense_ids.append({
-                    "word": entry["entry"]["word"],
-                    "sense_ids": sense_ids,
-                    "issue": "Duplicate sense IDs"
-                })
+                invalid_sense_ids.append(
+                    {
+                        "word": entry["entry"]["word"],
+                        "sense_ids": sense_ids,
+                        "issue": "Duplicate sense IDs",
+                    }
+                )
 
         assert len(invalid_sense_ids) == 0, (
-            f"Found {len(invalid_sense_ids)} entries with invalid sense IDs:\n" +
-            "\n".join(str(x) for x in invalid_sense_ids[:10])
+            f"Found {len(invalid_sense_ids)} entries with invalid sense IDs:\n"
+            + "\n".join(str(x) for x in invalid_sense_ids[:10])
         )
 
     def test_no_missing_translations(self, dictionary_data):
@@ -220,16 +232,16 @@ class TestRealDataValidation:
                 hebrew = sense.get("hebrew", "")
 
                 if not hebrew or hebrew == "":
-                    missing_translations.append({
-                        "word": entry["entry"]["word"],
-                        "sense_id": sense["sense_id"],
-                        "definition": sense.get("definition", "")
-                    })
+                    missing_translations.append(
+                        {
+                            "word": entry["entry"]["word"],
+                            "sense_id": sense["sense_id"],
+                            "definition": sense.get("definition", ""),
+                        }
+                    )
 
         # Should have very few missing translations
-        missing_rate = len(missing_translations) / sum(
-            len(e["entry"]["senses"]) for e in entries
-        )
+        missing_rate = len(missing_translations) / sum(len(e["entry"]["senses"]) for e in entries)
 
         assert missing_rate < 0.05, (
             f"Too many missing translations: {missing_rate:.2%} "
@@ -280,10 +292,10 @@ class TestHebrewIPAAccuracyAgainstRealData:
 
         # Filter out empty/null values
         hebrew_words = hebrew_words[
-            (hebrew_words["he_word"].notna()) &
-            (hebrew_words["he_word"] != "") &
-            (hebrew_words["he_ipa"].notna()) &
-            (hebrew_words["he_ipa"] != "")
+            (hebrew_words["he_word"].notna())
+            & (hebrew_words["he_word"] != "")
+            & (hebrew_words["he_ipa"].notna())
+            & (hebrew_words["he_ipa"] != "")
         ]
 
         validation_results = []
@@ -306,7 +318,7 @@ class TestHebrewIPAAccuracyAgainstRealData:
             exact_match_rate = exact_matches / total
             high_similarity_rate = high_similarity / total
 
-            print(f"\nIPA Validation Results:")
+            print("\nIPA Validation Results:")
             print(f"  Total words tested: {total}")
             print(f"  Exact matches: {exact_matches} ({exact_match_rate:.1%})")
             print(f"  High similarity (≥70%): {high_similarity} ({high_similarity_rate:.1%})")
@@ -314,7 +326,7 @@ class TestHebrewIPAAccuracyAgainstRealData:
             # Show some examples of differences
             differences = [r for r in validation_results if not r["exact_match"]][:5]
             if differences:
-                print(f"\nExample differences:")
+                print("\nExample differences:")
                 for diff in differences:
                     print(f"  {diff['hebrew']}:")
                     print(f"    Existing:  {diff['existing_ipa']}")
@@ -364,9 +376,9 @@ class TestDataQualityMetrics:
         # Check match type distribution
         if "match_type" in enriched_df.columns:
             match_type_counts = enriched_df["match_type"].value_counts()
-            print(f"\nMatch type distribution:")
+            print("\nMatch type distribution:")
             for match_type, count in match_type_counts.items():
-                print(f"  {match_type}: {count} ({count/total_entries:.1%})")
+                print(f"  {match_type}: {count} ({count / total_entries:.1%})")
 
             # Should have some direct matches
             direct_matches = enriched_df[enriched_df["match_type"] == "direct"]
@@ -376,8 +388,7 @@ class TestDataQualityMetrics:
         """Test that definitions are non-empty and meaningful."""
         # Check Spanish definitions
         empty_es_defs = enriched_df[
-            (enriched_df["es_definition"].isna()) |
-            (enriched_df["es_definition"] == "")
+            (enriched_df["es_definition"].isna()) | (enriched_df["es_definition"] == "")
         ]
 
         empty_rate_es = len(empty_es_defs) / len(enriched_df)
@@ -386,22 +397,24 @@ class TestDataQualityMetrics:
         # Check definition lengths (should be meaningful text)
         if "es_definition" in enriched_df.columns:
             avg_def_length = enriched_df["es_definition"].str.len().mean()
-            assert avg_def_length > 10, f"Definitions too short on average: {avg_def_length:.1f} chars"
+            assert avg_def_length > 10, (
+                f"Definitions too short on average: {avg_def_length:.1f} chars"
+            )
 
     def test_pos_tag_coverage(self, enriched_df):
         """Test that POS tags are present and valid."""
         if "es_pos" in enriched_df.columns:
             empty_pos = enriched_df[
-                (enriched_df["es_pos"].isna()) |
-                (enriched_df["es_pos"] == "") |
-                (enriched_df["es_pos"] == "unknown")
+                (enriched_df["es_pos"].isna())
+                | (enriched_df["es_pos"] == "")
+                | (enriched_df["es_pos"] == "unknown")
             ]
 
             pos_coverage = 1 - (len(empty_pos) / len(enriched_df))
             assert pos_coverage >= 0.90, f"POS tag coverage too low: {pos_coverage:.1%}"
 
             # Check for common POS tags
-            valid_pos_tags = ["noun", "verb", "adj", "adv", "pron", "prep", "conj", "det"]
+
             pos_counts = enriched_df["es_pos"].value_counts()
 
             # Should have nouns and verbs at minimum
@@ -418,7 +431,7 @@ class TestExampleSentences:
         if not path.exists():
             pytest.skip("Dictionary not found. Run pipeline first.")
 
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
 
     def test_examples_have_both_languages(self, dictionary_data):
@@ -435,22 +448,23 @@ class TestExampleSentences:
 
                     for example in examples:
                         if "es" not in example or "he" not in example:
-                            invalid_examples.append({
-                                "word": entry["entry"]["word"],
-                                "example": example
-                            })
+                            invalid_examples.append(
+                                {"word": entry["entry"]["word"], "example": example}
+                            )
 
                         # Check both are non-empty
                         if not example.get("es") or not example.get("he"):
-                            invalid_examples.append({
-                                "word": entry["entry"]["word"],
-                                "example": example,
-                                "issue": "Empty language field"
-                            })
+                            invalid_examples.append(
+                                {
+                                    "word": entry["entry"]["word"],
+                                    "example": example,
+                                    "issue": "Empty language field",
+                                }
+                            )
 
         assert len(invalid_examples) == 0, (
-            f"Found {len(invalid_examples)} invalid examples:\n" +
-            "\n".join(str(x) for x in invalid_examples[:5])
+            f"Found {len(invalid_examples)} invalid examples:\n"
+            + "\n".join(str(x) for x in invalid_examples[:5])
         )
 
         # At least some entries should have examples

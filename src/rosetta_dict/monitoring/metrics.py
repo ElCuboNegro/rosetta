@@ -1,10 +1,10 @@
 """Metrics collection for monitoring and observability."""
 
-import logging
-from typing import Dict, Any, List
-from datetime import datetime
 import json
+import logging
+from datetime import datetime
 from pathlib import Path
+from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 

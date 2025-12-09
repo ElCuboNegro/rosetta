@@ -61,12 +61,12 @@ def download_kaikki_data(language_code: str, output_path: str) -> str:
     url = f"https://kaikki.org/dictionary/{language_name}/kaikki.org-dictionary-{language_name}.jsonl"
 
     import time
-    
+
     max_retries = 3
     for attempt in range(max_retries):
         try:
             logger.info(f"Downloading {language_name} Wiktionary from {url} (Attempt {attempt+1}/{max_retries})...")
-            
+
             # Download with progress reporting
             def report_progress(block_num: int, block_size: int, total_size: int) -> None:
                 if total_size > 0:
@@ -83,7 +83,7 @@ def download_kaikki_data(language_code: str, output_path: str) -> str:
 
         except (urllib.error.ContentTooShortError, urllib.error.URLError) as e:
             logger.warning(f"Download failed (attempt {attempt+1}/{max_retries}): {e}")
-            
+
             # Clean up partial download with robust retry for Windows
             if output_file.exists():
                 for i in range(5):
@@ -94,7 +94,7 @@ def download_kaikki_data(language_code: str, output_path: str) -> str:
                         time.sleep(1)
                 else:
                     logger.warning(f"Could not delete partial file {output_path}. Please delete manually.")
-            
+
             if attempt < max_retries - 1:
                 logger.info("Retrying in 5 seconds...")
                 time.sleep(5)

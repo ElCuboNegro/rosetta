@@ -1,12 +1,12 @@
 """Data validation pipeline."""
 
 from kedro.pipeline import Pipeline, node
+
 from .nodes import (
-    validate_wiktionary_entries,
+    generate_data_quality_report,
     validate_aligned_matches,
     validate_enriched_entries,
-    validate_final_dictionary,
-    generate_data_quality_report,
+    validate_wiktionary_entries,
 )
 
 

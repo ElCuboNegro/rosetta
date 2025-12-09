@@ -11,8 +11,7 @@ Supports:
 """
 
 import logging
-from typing import Optional, Dict, List
-import re
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +65,7 @@ class HebrewIPAGenerator:
         'שׂ': 's',  # sin
         'ת': 't',  # tav
     }
-    
+
     # Sephardic Hebrew consonant mappings (traditional)
     CONSONANT_MAP_SEPHARDIC = {
         **CONSONANT_MAP_MODERN,
@@ -74,7 +73,7 @@ class HebrewIPAGenerator:
         'ח': 'ħ',  # chet - pharyngeal fricative (preserved)
         'ע': 'ʕ',  # ayin - pharyngeal fricative (preserved)
     }
-    
+
     # Vowel mappings (niqqud to IPA)
     VOWEL_MAP = {
         'ַ': 'a',   # patach
@@ -87,7 +86,7 @@ class HebrewIPAGenerator:
         'וּ': 'u',  # shuruk
         'ְ': 'ə',   # shva (when pronounced)
     }
-    
+
     def __init__(self, variant: str = "modern", use_phonikud: bool = True,
                  fallback_to_rules: bool = True):
         """Initialize the Hebrew IPA generator.
@@ -104,7 +103,9 @@ class HebrewIPAGenerator:
         # Load lookup table on first use
         if HebrewIPAGenerator.COMMON_WORD_IPA is None:
             try:
-                from rosetta_dict.pipelines.phonemization.hebrew_ipa_lookup import COMMON_WORD_IPA as lookup
+                from rosetta_dict.pipelines.phonemization.hebrew_ipa_lookup import (
+                    COMMON_WORD_IPA as lookup,
+                )
                 HebrewIPAGenerator.COMMON_WORD_IPA = lookup
                 logger.info(f"Loaded {len(lookup)} words from IPA lookup table")
             except ImportError:
@@ -119,7 +120,7 @@ class HebrewIPAGenerator:
 
         logger.info(f"Initialized HebrewIPAGenerator with variant={variant}, "
                    f"phonikud={self.use_phonikud}, fallback={fallback_to_rules}")
-    
+
     def generate_ipa(self, hebrew_word: str) -> Optional[str]:
         """Generate IPA pronunciation for a Hebrew word.
 
@@ -226,7 +227,7 @@ class HebrewIPAGenerator:
                 logger.warning(f"Rule-based generation failed for '{hebrew_word}': {e}")
 
         return None
-    
+
     def _generate_with_phonikud(self, hebrew_word: str) -> Optional[str]:
         """Generate IPA using the phonikud library.
         
@@ -238,24 +239,24 @@ class HebrewIPAGenerator:
         """
         if not PHONIKUD_AVAILABLE:
             return None
-        
+
         try:
             # phonikud.phonemize returns IPA transcription
             ipa = phonemize(hebrew_word)
-            
+
             # Clean up the output
             if ipa:
                 ipa = ipa.strip()
                 # Remove brackets if phonikud adds them
                 ipa = ipa.strip('[]/')
                 return f"/{ipa}/" if ipa else None
-            
+
         except Exception as e:
             logger.debug(f"phonikud error for '{hebrew_word}': {e}")
             return None
-        
+
         return None
-    
+
     def _generate_with_rules(self, hebrew_word: str) -> Optional[str]:
         """Generate IPA using enhanced rule-based mapping.
 
@@ -331,7 +332,7 @@ class HebrewIPAGenerator:
             return f"/{ipa}/" if ipa else None
 
         return None
-    
+
     def test_against_existing(self, hebrew_word: str, existing_ipa: str) -> Dict[str, any]:
         """Test generation against existing IPA to validate accuracy.
         
@@ -343,26 +344,26 @@ class HebrewIPAGenerator:
             Dictionary with test results
         """
         generated_ipa = self.generate_ipa(hebrew_word)
-        
+
         # Normalize both for comparison (remove brackets, whitespace)
         def normalize(ipa_str):
             if not ipa_str:
                 return ""
             return ipa_str.strip().strip('[]/')
-        
+
         gen_norm = normalize(generated_ipa)
         exist_norm = normalize(existing_ipa)
-        
+
         # Calculate simple similarity (exact match or character overlap)
         exact_match = gen_norm == exist_norm
-        
+
         if gen_norm and exist_norm:
             # Simple character overlap ratio
             common_chars = sum(1 for c in gen_norm if c in exist_norm)
             similarity = common_chars / max(len(gen_norm), len(exist_norm))
         else:
             similarity = 0.0
-        
+
         return {
             "hebrew": hebrew_word,
             "existing_ipa": existing_ipa,
@@ -373,7 +374,7 @@ class HebrewIPAGenerator:
         }
 
 
-def generate_hebrew_ipa_for_entries(entries: List[Dict], 
+def generate_hebrew_ipa_for_entries(entries: List[Dict],
                                      variant: str = "modern",
                                      skip_existing: bool = True) -> List[Dict]:
     """Generate Hebrew IPA for dictionary entries.
@@ -387,42 +388,42 @@ def generate_hebrew_ipa_for_entries(entries: List[Dict],
         Updated entries with generated IPA
     """
     generator = HebrewIPAGenerator(variant=variant)
-    
+
     total_senses = 0
     generated_count = 0
     skipped_count = 0
     failed_count = 0
-    
+
     for entry_dict in entries:
         entry = entry_dict.get("entry", {})
         senses = entry.get("senses", [])
-        
+
         for sense in senses:
             total_senses += 1
-            
+
             # Skip if already has IPA and skip_existing is True
             if skip_existing and sense.get("ipa_hebrew"):
                 skipped_count += 1
                 continue
-            
+
             hebrew_word = sense.get("hebrew", "")
             if not hebrew_word:
                 failed_count += 1
                 continue
-            
+
             # Generate IPA
             ipa = generator.generate_ipa(hebrew_word)
-            
+
             if ipa:
                 sense["ipa_hebrew"] = ipa
                 generated_count += 1
             else:
                 failed_count += 1
-    
-    logger.info(f"Hebrew IPA generation complete:")
+
+    logger.info("Hebrew IPA generation complete:")
     logger.info(f"  Total senses: {total_senses}")
     logger.info(f"  Generated: {generated_count}")
     logger.info(f"  Skipped (existing): {skipped_count}")
     logger.info(f"  Failed: {failed_count}")
-    
+
     return entries

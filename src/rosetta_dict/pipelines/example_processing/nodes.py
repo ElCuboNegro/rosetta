@@ -76,8 +76,8 @@ def _tokenize_spanish(text: str) -> List[str]:
         List of lowercase Spanish words (length > 2).
     """
     return [
-        w.strip('.,!?;:()[]"\'').lower() 
-        for w in text.split() 
+        w.strip('.,!?;:()[]"\'').lower()
+        for w in text.split()
         if len(w) > 2
     ]
 
@@ -92,7 +92,7 @@ def _tokenize_hebrew(text: str) -> List[str]:
         List of Hebrew words (length > 1).
     """
     return [
-        w.strip('.,!?;:()[]"\'') 
-        for w in text.split() 
+        w.strip('.,!?;:()[]"\'')
+        for w in text.split()
         if len(w) > 1
     ]

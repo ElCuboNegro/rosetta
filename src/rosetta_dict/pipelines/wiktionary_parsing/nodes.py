@@ -8,7 +8,7 @@ import gzip
 import json
 import logging
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 import pandas as pd
 
@@ -82,11 +82,11 @@ def parse_spanish_wiktionary(jsonl_path: str) -> pd.DataFrame:
     df = pd.DataFrame(data)
     logger.info(f"Found {spanish_entries} Spanish entries out of {len(entries)} total entries")
     logger.info(f"Kept {len(df)} Spanish entries with data")
-    
+
     if len(df) > 0:
         he_trans_count = df['translations_he'].apply(len).sum()
         logger.info(f"Entries with Hebrew translations: {he_trans_count}")
-    
+
     return df
 
 
@@ -157,11 +157,11 @@ def parse_hebrew_wiktionary(jsonl_path: str) -> pd.DataFrame:
     df = pd.DataFrame(data)
     logger.info(f"Found {hebrew_entries} Hebrew entries out of {len(entries)} total entries")
     logger.info(f"Kept {len(df)} Hebrew entries with data")
-    
+
     if len(df) > 0:
         es_trans_count = df['translations_es'].apply(len).sum()
         logger.info(f"Entries with Spanish translations: {es_trans_count}")
-    
+
     return df
 
 
@@ -255,12 +255,12 @@ def parse_english_wiktionary(jsonl_path: str) -> pd.DataFrame:
 
     df = pd.DataFrame(data)
     logger.info(f"Extracted {len(df)} bridge entries from English Wiktionary")
-    
+
     if len(df) > 0:
         es_count = len(df[df['source_lang'] == 'es'])
         he_count = len(df[df['source_lang'] == 'he'])
         logger.info(f"Spanish entries: {es_count}, Hebrew entries: {he_count}")
-    
+
     return df
 
 
@@ -384,12 +384,12 @@ def _parse_bridge_wiktionary(jsonl_path: str, language_name: str) -> pd.DataFram
 
     df = pd.DataFrame(data)
     logger.info(f"Extracted {len(df)} bridge entries from {language_name} Wiktionary")
-    
+
     if len(df) > 0:
         es_count = len(df[df['source_lang'] == 'es'])
         he_count = len(df[df['source_lang'] == 'he'])
         logger.info(f"Spanish entries: {es_count}, Hebrew entries: {he_count}")
-    
+
     return df
 
 
@@ -482,12 +482,12 @@ def _extract_translations(entry: Dict[str, Any], lang_codes: List[str]) -> Dict[
         Dictionary mapping language codes to lists of translations.
     """
     result = {code: [] for code in lang_codes}
-    
+
     translations = entry.get("translations", [])
     for trans in translations:
         lang_code = trans.get("lang_code")  # Most Wiktionaries use "lang_code"
         trans_word = trans.get("word", "")
-        
+
         if not trans_word or lang_code not in lang_codes:
             continue
 

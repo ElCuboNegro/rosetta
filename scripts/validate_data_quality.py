@@ -4,10 +4,11 @@ This script validates the quality and reliability of aligned data
 before using it as a baseline for testing.
 """
 
-import pandas as pd
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
+
+import pandas as pd
 
 # Fix console encoding for Windows
 if sys.platform == 'win32':
@@ -28,18 +29,18 @@ def validate_enriched_entries():
 
     df = pd.read_parquet(enriched_path)
 
-    print(f"\n1. BASIC STATISTICS")
+    print("\n1. BASIC STATISTICS")
     print(f"   Total aligned entries: {len(df):,}")
 
     # Match type distribution
     if "match_type" in df.columns:
-        print(f"\n2. MATCH TYPE DISTRIBUTION")
+        print("\n2. MATCH TYPE DISTRIBUTION")
         for match_type, count in df["match_type"].value_counts().items():
             percentage = (count / len(df)) * 100
             print(f"   {match_type}: {count:,} ({percentage:.1f}%)")
 
     # Check for missing data
-    print(f"\n3. DATA COMPLETENESS")
+    print("\n3. DATA COMPLETENESS")
     required_fields = ["es_word", "he_word", "es_ipa", "he_ipa", "es_definition"]
     for field in required_fields:
         if field in df.columns:
@@ -51,7 +52,7 @@ def validate_enriched_entries():
             print(f"   {status} {field}: {total_missing:,} missing ({percentage:.1f}%)")
 
     # Validate Hebrew IPA coverage
-    print(f"\n4. HEBREW IPA COVERAGE")
+    print("\n4. HEBREW IPA COVERAGE")
     if "he_ipa" in df.columns:
         valid_ipa = df[
             (df["he_ipa"].notna()) &
@@ -69,7 +70,7 @@ def validate_enriched_entries():
             print(f"   IPA format (with slashes): {with_slashes:,}/{len(valid_ipa):,} ({format_percentage:.1f}%)")
 
     # Check for duplicates
-    print(f"\n5. DATA INTEGRITY")
+    print("\n5. DATA INTEGRITY")
     if "es_word" in df.columns and "he_word" in df.columns:
         duplicates = df.duplicated(subset=["es_word", "he_word", "sense_id"], keep=False)
         dup_count = duplicates.sum()
@@ -82,13 +83,13 @@ def validate_enriched_entries():
         polysemic_words = (polysemic > 1).sum()
         max_senses = polysemic.max()
         avg_senses = polysemic.mean()
-        print(f"\n6. POLYSEMY ANALYSIS")
+        print("\n6. POLYSEMY ANALYSIS")
         print(f"   Polysemic words: {polysemic_words:,}")
         print(f"   Max senses per word: {max_senses}")
         print(f"   Avg senses per word: {avg_senses:.2f}")
 
     # Sample quality check
-    print(f"\n7. SAMPLE DATA (First 5 entries)")
+    print("\n7. SAMPLE DATA (First 5 entries)")
     print("   " + "-" * 76)
     sample = df.head(5)
     for idx, row in sample.iterrows():
@@ -101,7 +102,7 @@ def validate_enriched_entries():
         print(f"      Match: {match_type}, IPA: {he_ipa}")
 
     # Overall assessment
-    print(f"\n8. OVERALL ASSESSMENT")
+    print("\n8. OVERALL ASSESSMENT")
 
     issues = []
 
