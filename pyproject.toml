@@ -18,10 +18,10 @@ dependencies = [
     "scikit-learn~=1.5.1",
     "seaborn~=0.12.1",
     "wiktextract>=1.99.0",
-    "lupa==2.2",
+    "lupa",
     "rapidfuzz>=3.0.0",
     "pyarrow>=15.0.0",
-    "phonikud>=0.5.0",
+    "phonikud @ git+https://github.com/ElCuboNegro/phonikud.git@main",
     "phonikud-onnx>=0.2.0"
 ]
 
