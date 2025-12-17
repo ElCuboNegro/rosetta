@@ -26,7 +26,7 @@ def parse_spanish_wiktionary(jsonl_path: str) -> pd.DataFrame:
         jsonl_path: Path to kaikki.org Spanish Wiktionary JSONL.gz file.
 
     Returns:
-        DataFrame with columns: word, pos, ipa, definitions (list),
+        DataFrame with columns: word, pos, ipa, definitions (list), examples (list),
         translations_he, translations_en, translations_fr, translations_de (lists).
 
     Raises:
@@ -74,6 +74,7 @@ def parse_spanish_wiktionary(jsonl_path: str) -> pd.DataFrame:
                 "pos": pos,
                 "ipa": ipa,
                 "definitions": definitions,
+                "examples": _extract_examples(entry),
                 "translations_en": translations.get("en", []),
                 "translations_fr": translations.get("fr", []),
                 "translations_de": translations.get("de", []),
@@ -281,149 +282,6 @@ def parse_english_wiktionary(jsonl_path: str) -> pd.DataFrame:
     return df
 
 
-def parse_french_wiktionary(jsonl_path: str) -> pd.DataFrame:
-    """Parse French Wiktionary for Spanish and Hebrew entries with translations.
-
-    French Wiktionary provides additional bridge data for triangulation.
-    This extracts both Spanish and Hebrew word entries that have translations.
-
-    Args:
-        jsonl_path: Path to kaikki.org French Wiktionary JSONL.gz file.
-
-    Returns:
-        DataFrame with Spanish and Hebrew entries with cross-translations.
-
-    Raises:
-        FileNotFoundError: If JSONL file doesn't exist.
-    """
-    return _parse_bridge_wiktionary(jsonl_path, "French")
-
-
-def parse_german_wiktionary(jsonl_path: str) -> pd.DataFrame:
-    """Parse German Wiktionary for Spanish and Hebrew entries with translations.
-
-    German Wiktionary provides additional bridge data for triangulation.
-    This extracts both Spanish and Hebrew word entries that have translations.
-
-    Args:
-        jsonl_path: Path to kaikki.org German Wiktionary JSONL.gz file.
-
-    Returns:
-        DataFrame with Spanish and Hebrew entries with cross-translations.
-
-    Raises:
-        FileNotFoundError: If JSONL file doesn't exist.
-    """
-    return _parse_bridge_wiktionary(jsonl_path, "German")
-
-
-def _parse_bridge_wiktionary(jsonl_path: str, language_name: str) -> pd.DataFrame:
-    """Parse a bridge language Wiktionary for Spanish/Hebrew entries.
-
-    Args:
-        jsonl_path: Path to kaikki.org Wiktionary JSONL.gz file.
-        language_name: Name of the language for logging (e.g., "French", "German").
-
-    Returns:
-        DataFrame with Spanish and Hebrew entries with cross-translations.
-    """
-    logger.info(f"Parsing {language_name} Wiktionary for bridge translations: {jsonl_path}...")
-
-    if not Path(jsonl_path).exists():
-        raise FileNotFoundError(f"JSONL file not found: {jsonl_path}")
-
-    entries = []
-    entry_count = 0
-
-    is_gzipped = jsonl_path.endswith(".gz")
-    open_func = gzip.open if is_gzipped else open
-
-    with open_func(jsonl_path, "rt", encoding="utf-8") as f:
-        for line_num, line in enumerate(f, 1):
-            if not line.strip():
-                continue
-
-            try:
-                entry = json.loads(line)
-
-                # Keep entries in source language (Fr/De) that have translations to Spanish OR Hebrew
-                lang_code = entry.get("lang_code")
-                target_lang = "fr" if language_name == "French" else "de"
-
-                if lang_code == target_lang and entry.get("translations"):
-                    # Quick check before full processing
-                    has_relevant_trans = False
-                    for t in entry.get("translations", []):
-                        # Most descriptions use 'lang_code' or 'code'
-                        code = t.get("lang_code") or t.get("code")
-                        if code in ["es", "he"]:
-                            has_relevant_trans = True
-                            break
-
-                    if has_relevant_trans:
-                        entries.append(entry)
-
-                entry_count += 1
-                if entry_count % 50000 == 0:
-                    logger.info(f"Scanned {entry_count} {language_name} Wiktionary entries...")
-
-            except json.JSONDecodeError as e:
-                logger.warning(f"Failed to parse JSON on line {line_num}: {e}")
-                continue
-
-    logger.info(f"Scanned {entry_count} total {language_name} Wiktionary entries")
-    logger.info(f"Found {len(entries)} {language_name} entries with Spanish/Hebrew translations")
-
-    # Extract bridge translation data
-    data = []
-    for entry in entries:
-        word = entry.get("word", "")
-        if not word:
-            continue
-
-        lang_code = entry.get("lang_code")
-        ipa = _extract_ipa(entry)
-        pos = entry.get("pos", "unknown")
-        definitions = _extract_definitions(entry, word)
-
-        # Get translations to Spanish and Hebrew
-        translations_es = []
-        translations_he = []
-        translations = entry.get("translations", [])
-        for trans in translations:
-            trans_lang = trans.get("lang_code")  # Most Wiktionaries use "lang_code"
-            trans_word = trans.get("word", "")
-            if not trans_word:
-                continue
-
-            if trans_lang == "es" and trans_word not in translations_es:
-                translations_es.append(trans_word)
-            elif trans_lang == "he" and trans_word not in translations_he:
-                translations_he.append(trans_word)
-
-        data.append(
-            {
-                "source_lang": lang_code,
-                "word": word,
-                "pos": pos,
-                "ipa": ipa,
-                "definitions": definitions,
-                "translations_es": translations_es,
-                "translations_he": translations_he,
-            }
-        )
-
-    df = pd.DataFrame(data)
-    logger.info(f"Extracted {len(df)} bridge entries from {language_name} Wiktionary")
-
-    if len(df) > 0:
-        es_count = len(df[df["source_lang"] == "es"])
-        he_count = len(df[df["source_lang"] == "he"])
-        logger.info(f"Spanish entries: {es_count}, Hebrew entries: {he_count}")
-
-    return df
-
-
 # Helper functions
 
 
@@ -501,6 +359,30 @@ def _extract_definitions(entry: Dict[str, Any], word: str) -> List[str]:
         definitions = [word]
 
     return definitions
+
+
+def _extract_examples(entry: Dict[str, Any]) -> List[str]:
+    """Extract example sentences from entry.
+
+    Args:
+        entry: Wiktionary entry dictionary.
+
+    Returns:
+        List of example strings.
+    """
+    examples = []
+    senses = entry.get("senses", [])
+    for sense in senses:
+        sense_examples = sense.get("examples", [])
+        for ex in sense_examples:
+            # Examples can be dicts or strings depending on the source structure
+            if isinstance(ex, dict):
+                text = ex.get("text", "")
+                if text:
+                    examples.append(text)
+            elif isinstance(ex, str):
+                examples.append(ex)
+    return examples
 
 
 def _extract_translations(entry: Dict[str, Any], lang_codes: List[str]) -> Dict[str, List[str]]:

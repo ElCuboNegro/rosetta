@@ -13,15 +13,20 @@ from rapidfuzz import fuzz, process
 logger = logging.getLogger(__name__)
 
 
+from typing import Any, Dict, List, Tuple
+
+
 def align_languages(
     spanish_df: pd.DataFrame, hebrew_df: pd.DataFrame, bridge_df: pd.DataFrame = None
-) -> pd.DataFrame:
-    """Align Spanish words with Hebrew translations using multiple strategies.
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Align Spanish words with Hebrew translations and identify orphans.
 
     Strategies (in order of preference):
     1. Direct translations from Spanish/Hebrew Wiktionaries
     2. Triangulation via English Wiktionary (Spanish→English→Hebrew)
     3. Fuzzy definition matching using rapidfuzz
+
+    Unmatched entries are returned as orphans for separate analysis.
 
     Args:
         spanish_df: Spanish entries with translations_he field.
@@ -29,7 +34,7 @@ def align_languages(
         bridge_df: English Wiktionary entries for triangulation (optional).
 
     Returns:
-        DataFrame with aligned word pairs containing all relevant fields.
+        Tuple[pd.DataFrame, pd.DataFrame]: (aligned_matches, orphaned_entries)
     """
     logger.info("Aligning Spanish and Hebrew entries...")
     logger.info(f"Input: {len(spanish_df)} Spanish, {len(hebrew_df)} Hebrew entries")
@@ -37,6 +42,8 @@ def align_languages(
         logger.info(f"Bridge data: {len(bridge_df)} English Wiktionary entries")
 
     alignments = []
+    matched_es_words = set()
+    matched_he_words = set()
     stats = {"direct": 0, "triangulation": 0, "fuzzy": 0, "failed": 0}
 
     # Strategy 1: Direct translations
@@ -76,6 +83,8 @@ def align_languages(
                     }
                 )
                 stats["direct"] += 1
+                matched_es_words.add(es_row["word"])
+                matched_he_words.add(he_word)
 
     logger.info(f"Direct alignments: {stats['direct']}")
 
@@ -89,15 +98,26 @@ def align_languages(
 
         # Ensure we're working with the right columns
         if "translations_es" in bridge_df.columns and "translations_he" in bridge_df.columns:
+            import numpy as np
+
             count_links = 0
             for _, row in bridge_df.iterrows():
-                # Get translations (handle potential different formats just in case, though they should be lists)
-                es_trans = (
-                    row["translations_es"] if isinstance(row["translations_es"], list) else []
-                )
-                he_trans = (
-                    row["translations_he"] if isinstance(row["translations_he"], list) else []
-                )
+                # Get translations (handle potential different formats: list or numpy array)
+                val_es = row["translations_es"]
+                if isinstance(val_es, list):
+                    es_trans = val_es
+                elif isinstance(val_es, np.ndarray):
+                    es_trans = val_es.tolist()
+                else:
+                    es_trans = []
+
+                val_he = row["translations_he"]
+                if isinstance(val_he, list):
+                    he_trans = val_he
+                elif isinstance(val_he, np.ndarray):
+                    he_trans = val_he.tolist()
+                else:
+                    he_trans = []
 
                 if es_trans and he_trans:
                     for es_word in es_trans:
@@ -123,7 +143,7 @@ def align_languages(
             es_word = es_row["word"]
 
             # Skip if already aligned
-            if es_word in aligned_es_words:
+            if es_word in matched_es_words:
                 continue
 
             # Check if we have candidates from triangulation
@@ -164,7 +184,8 @@ def align_languages(
                             }
                         )
                         stats["triangulation"] += 1
-                        aligned_es_words.add(es_word)
+                        matched_es_words.add(es_word)
+                        matched_he_words.add(he_word)
                         break  # Only take the first valid match for now
 
         logger.info(
@@ -247,11 +268,55 @@ def align_languages(
 
     logger.info(f"Fuzzy alignments completed: {stats['fuzzy']} matches found (OPTIMIZED algorithm)")
 
-    df = pd.DataFrame(alignments)
+    # --- Identify Orphans ---
+    logger.info("Identifying orphaned entries...")
+    orphans = []
+
+    # Spanish Orphans
+    for _, es_row in spanish_df.iterrows():
+        if es_row["word"] not in matched_es_words:
+            es_defs = es_row["definitions"] if isinstance(es_row["definitions"], list) else []
+            orphans.append(
+                {
+                    "source_lang": "es",
+                    "word": es_row["word"],
+                    "ipa": es_row["ipa"],
+                    "pos": es_row["pos"],
+                    "definitions": es_defs,
+                    "translations_es": [],
+                    "translations_he": es_row.get("translations_he", []),
+                }
+            )
+
+    # Hebrew Orphans
+    for _, he_row in hebrew_df.iterrows():
+        if he_row["word"] not in matched_he_words:
+            he_defs = he_row["definitions"] if isinstance(he_row["definitions"], list) else []
+            orphans.append(
+                {
+                    "source_lang": "he",
+                    "word": he_row["word"],
+                    "ipa": he_row["ipa"],
+                    "pos": he_row["pos"],
+                    "definitions": he_defs,
+                    "translations_es": he_row.get("translations_es", []),
+                    "translations_he": [],
+                }
+            )
+
+    aligned_df = pd.DataFrame(alignments)
+    orphans_df = pd.DataFrame(orphans)
+
+    logger.info(f"Total Aligned Matches: {len(aligned_df)}")
     logger.info(
-        f"Total alignments: {len(df)} (direct: {stats['direct']}, triangulation: {stats['triangulation']}, fuzzy: {stats['fuzzy']})"
+        f"Total Orphans: {len(orphans_df)} ({len(orphans_df[orphans_df['source_lang'] == 'es'])} ES, {len(orphans_df[orphans_df['source_lang'] == 'he'])} HE)"
     )
-    return df
+
+    if len(aligned_df) > 0:
+        logger.info("Alignment distribution:")
+        logger.info(aligned_df["match_type"].value_counts())
+
+    return aligned_df, orphans_df
 
 
 def enrich_entries(aligned_df: pd.DataFrame, examples_df: pd.DataFrame) -> pd.DataFrame:

@@ -18,7 +18,7 @@ def create_pipeline(**kwargs) -> Pipeline:
         [
             node(
                 func=combine_bridge_data,
-                inputs=["raw_english_entries", "raw_french_entries", "raw_german_entries"],
+                inputs=["raw_english_entries"],
                 outputs="bridge_entries",
                 name="combine_bridge_data_node",
                 tags=["bridge", "triangulation", "combination"],

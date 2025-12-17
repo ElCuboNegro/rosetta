@@ -4,8 +4,6 @@ from kedro.pipeline import Pipeline, node
 
 from .nodes import (
     parse_english_wiktionary,
-    parse_french_wiktionary,
-    parse_german_wiktionary,
     parse_hebrew_wiktionary,
     parse_spanish_wiktionary,
 )
@@ -43,20 +41,6 @@ def create_pipeline(**kwargs) -> Pipeline:
                 outputs="raw_english_entries",
                 name="parse_english_wiktionary_node",
                 tags=["parsing", "extraction", "english", "bridge"],
-            ),
-            node(
-                func=parse_french_wiktionary,
-                inputs="fr_dump_filepath",
-                outputs="raw_french_entries",
-                name="parse_french_wiktionary_node",
-                tags=["parsing", "extraction", "french", "bridge"],
-            ),
-            node(
-                func=parse_german_wiktionary,
-                inputs="de_dump_filepath",
-                outputs="raw_german_entries",
-                name="parse_german_wiktionary_node",
-                tags=["parsing", "extraction", "german", "bridge"],
             ),
         ]
     )

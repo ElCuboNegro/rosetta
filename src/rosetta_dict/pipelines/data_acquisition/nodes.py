@@ -58,14 +58,18 @@ def download_kaikki_data(language_code: str, output_path: str) -> str:
 
     # Construct kaikki.org URL using language name
     # Format: https://kaikki.org/dictionary/{LanguageName}/kaikki.org-dictionary-{LanguageName}.jsonl
-    url = f"https://kaikki.org/dictionary/{language_name}/kaikki.org-dictionary-{language_name}.jsonl"
+    url = (
+        f"https://kaikki.org/dictionary/{language_name}/kaikki.org-dictionary-{language_name}.jsonl"
+    )
 
     import time
 
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            logger.info(f"Downloading {language_name} Wiktionary from {url} (Attempt {attempt+1}/{max_retries})...")
+            logger.info(
+                f"Downloading {language_name} Wiktionary from {url} (Attempt {attempt + 1}/{max_retries})..."
+            )
 
             # Download with progress reporting
             def report_progress(block_num: int, block_size: int, total_size: int) -> None:
@@ -82,7 +86,7 @@ def download_kaikki_data(language_code: str, output_path: str) -> str:
             return output_path
 
         except (urllib.error.ContentTooShortError, urllib.error.URLError) as e:
-            logger.warning(f"Download failed (attempt {attempt+1}/{max_retries}): {e}")
+            logger.warning(f"Download failed (attempt {attempt + 1}/{max_retries}): {e}")
 
             # Clean up partial download with robust retry for Windows
             if output_file.exists():
@@ -93,7 +97,9 @@ def download_kaikki_data(language_code: str, output_path: str) -> str:
                     except PermissionError:
                         time.sleep(1)
                 else:
-                    logger.warning(f"Could not delete partial file {output_path}. Please delete manually.")
+                    logger.warning(
+                        f"Could not delete partial file {output_path}. Please delete manually."
+                    )
 
             if attempt < max_retries - 1:
                 logger.info("Retrying in 5 seconds...")
@@ -110,3 +116,84 @@ def download_kaikki_data(language_code: str, output_path: str) -> str:
                 except:
                     pass
             raise
+
+
+def download_gutenberg_data(languages: list[str], output_dir: str, limit: int = 20) -> list[str]:
+    """
+    Download books from Project Gutenberg via Gutendex API.
+
+    Args:
+        languages: List of language codes (e.g. ['es', 'he']).
+        output_dir: Base directory to save books.
+        limit: Max books per language to download.
+
+    Returns:
+        List of paths to downloaded files.
+    """
+    import requests
+    import time
+
+    downloaded_files = []
+    base_path = Path(output_dir)
+
+    for lang in languages:
+        lang_dir = base_path / lang
+        lang_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.info(f"Searching Gutenberg for language: {lang}")
+        # Gutendex API search
+        api_url = f"https://gutendex.com/books?languages={lang}&sort=popular"
+
+        books_downloaded = 0
+        page_url = api_url
+
+        while books_downloaded < limit and page_url:
+            try:
+                response = requests.get(page_url)
+                response.raise_for_status()
+                data = response.json()
+
+                books = data.get("results", [])
+                if not books:
+                    break
+
+                for book in books:
+                    if books_downloaded >= limit:
+                        break
+
+                    title = book.get("title", "Unknown").replace(":", "-").replace("/", "-")[:50]
+                    book_id = book.get("id")
+
+                    # Find text/plain format
+                    formats = book.get("formats", {})
+                    text_url = formats.get("text/plain; charset=utf-8") or formats.get("text/plain")
+
+                    if not text_url:
+                        continue
+
+                    filename = f"{book_id}_{title}.txt"
+                    file_path = lang_dir / filename
+
+                    if file_path.exists():
+                        logger.info(f"Skipping existing book: {filename}")
+                        downloaded_files.append(str(file_path))
+                        books_downloaded += 1
+                        continue
+
+                    logger.info(f"Downloading: {title} ({lang})")
+                    try:
+                        book_content = requests.get(text_url).text
+                        file_path.write_text(book_content, encoding="utf-8")
+                        downloaded_files.append(str(file_path))
+                        books_downloaded += 1
+                        time.sleep(0.5)  # Be nice to servers
+                    except Exception as e:
+                        logger.warning(f"Failed to download {title}: {e}")
+
+                page_url = data.get("next")
+
+            except Exception as e:
+                logger.error(f"Error querying Gutendex: {e}")
+                break
+
+    return downloaded_files

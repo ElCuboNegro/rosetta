@@ -176,8 +176,8 @@ def validate_aligned_matches(df: pd.DataFrame) -> pd.DataFrame:
         issues.append(f"Found {len(non_hebrew)} entries without Hebrew characters in he_word")
 
     # Check IPA coverage
-    missing_es_ipa = df[(df["es_ipa"].isna()) | (df["es_ipa"] == "")].count()
-    missing_he_ipa = df[(df["he_ipa"].isna()) | (df["he_ipa"] == "")].count()
+    missing_es_ipa = len(df[(df["es_ipa"].isna()) | (df["es_ipa"] == "")])
+    missing_he_ipa = len(df[(df["he_ipa"].isna()) | (df["he_ipa"] == "")])
 
     ipa_threshold = len(df) * 0.2  # 20% threshold
 

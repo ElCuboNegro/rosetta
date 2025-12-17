@@ -22,9 +22,9 @@ def create_pipeline(**kwargs) -> Pipeline:
                 inputs={
                     "spanish_df": "raw_spanish_entries",
                     "hebrew_df": "raw_hebrew_entries",
-                    "bridge_df": "bridge_entries"
+                    "bridge_df": "bridge_entries",
                 },
-                outputs="aligned_matches",
+                outputs=["aligned_matches", "orphaned_entries"],
                 name="align_languages_node",
                 tags=["alignment", "matching", "core"],
             ),

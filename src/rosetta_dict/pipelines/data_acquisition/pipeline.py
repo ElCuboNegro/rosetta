@@ -39,18 +39,14 @@ def create_pipeline(**kwargs) -> Pipeline:
                 tags=["download", "io", "english", "bridge"],
             ),
             node(
-                func=download_kaikki_data,
-                inputs=["params:kaikki.french_lang_code", "params:kaikki.fr_data_path"],
-                outputs="fr_dump_filepath",
-                name="download_french_kaikki_node",
-                tags=["download", "io", "french", "bridge"],
-            ),
-            node(
-                func=download_kaikki_data,
-                inputs=["params:kaikki.german_lang_code", "params:kaikki.de_data_path"],
-                outputs="de_dump_filepath",
-                name="download_german_kaikki_node",
-                tags=["download", "io", "german", "bridge"],
+                func=download_gutenberg_data,
+                inputs=[
+                    "params:gutenberg_languages",
+                    "params:gutenberg_path",
+                    "params:gutenberg_limit",
+                ],
+                outputs="gutenberg_files_list",
+                name="download_gutenberg_books",
             ),
         ]
     )

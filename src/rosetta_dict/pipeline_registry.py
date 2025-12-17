@@ -8,13 +8,14 @@ feature in Kedro Viz, while keeping inputs and outputs global to maintain connec
 
 from kedro.framework.project import find_pipelines
 from kedro.pipeline import Pipeline, pipeline
+from .pipelines import output_formatting, book_alignment
 
 
 def register_pipelines() -> dict[str, Pipeline]:
     """Register the project's pipelines.
 
     The pipelines are organized into the following categories:
-    
+
     1. Data Acquisition: Download raw data sources
     2. Wiktionary Parsing: Parse JSONL files into DataFrames
     3. Bridge Combination: Merge multi-language bridge data
@@ -57,6 +58,9 @@ def register_pipelines() -> dict[str, Pipeline]:
             outputs={ds: ds for ds in pipe.outputs()},
             parameters=params,
         )
+
+    pipelines["output_formatting"] = output_formatting.create_pipeline()
+    pipelines["book_alignment"] = book_alignment.create_pipeline()
 
     # Create the default pipeline by combining all namespaced pipelines
     pipelines["__default__"] = sum(pipelines.values())

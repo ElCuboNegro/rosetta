@@ -94,6 +94,21 @@ clean_examples:
     kedro-viz:
       layer: intermediate
 
+wiktionary_examples_tagged:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/wiktionary_examples_tagged.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+tatoeba_examples_tagged:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/tatoeba_examples_tagged.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+
 # ============================================================================
 # PRIMARY DATA (Aligner pipeline outputs)
 # ============================================================================
@@ -101,6 +116,13 @@ clean_examples:
 language_alignment.aligned_matches:
   type: pandas.ParquetDataset
   filepath: data/03_primary/aligned_matches.parquet
+  metadata:
+    kedro-viz:
+      layer: primary
+
+language_alignment.orphaned_entries:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/orphaned_entries.parquet
   metadata:
     kedro-viz:
       layer: primary
@@ -126,7 +148,10 @@ aligned_dictionary:
     ensure_ascii: False
     indent: 2
   fs_args:
-    encoding: utf-8
+    open_args_save:
+      encoding: utf-8
+    open_args_load:
+      encoding: utf-8
   metadata:
     kedro-viz:
       layer: primary
@@ -138,7 +163,10 @@ aligned_dictionary_with_ipa:
     ensure_ascii: False
     indent: 2
   fs_args:
-    encoding: utf-8
+    open_args_save:
+      encoding: utf-8
+    open_args_load:
+      encoding: utf-8
   metadata:
     kedro-viz:
       layer: primary
@@ -186,11 +214,22 @@ progress_summary:
 # REPORTING (Final output)
 # ============================================================================
 
-final_dictionary_json:
+gutenberg_files_list:
+  type: json.JSONDataset
+  filepath: data/01_raw/gutenberg/downloaded_manifest.json
+
+aligned_book_sentences:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/aligned_books.parquet
+
+spanish_wiktionary_json:
   type: text.TextDataset
   filepath: data/08_reporting/dictionary_v1.json
   fs_args:
-    encoding: utf-8
+    open_args_save:
+      encoding: utf-8
+    open_args_load:
+      encoding: utf-8
   metadata:
     kedro-viz:
       layer: reporting
