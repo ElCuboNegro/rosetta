@@ -2,7 +2,7 @@
 
 from kedro.pipeline import Pipeline, node
 
-from .nodes import download_kaikki_data
+from .nodes import download_kaikki_data, download_gutenberg_data, download_benyehuda_data
 
 
 def create_pipeline(**kwargs) -> Pipeline:
@@ -47,6 +47,16 @@ def create_pipeline(**kwargs) -> Pipeline:
                 ],
                 outputs="gutenberg_files_list",
                 name="download_gutenberg_books",
+            ),
+            node(
+                func=download_benyehuda_data,
+                inputs=[
+                    "params:benyehuda_path",
+                    "params:benyehuda_limit",
+                    "params:benyehuda_languages",
+                ],
+                outputs="ben_yehuda_files_list",
+                name="download_benyehuda_books",
             ),
         ]
     )

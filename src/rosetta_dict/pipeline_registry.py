@@ -8,7 +8,7 @@ feature in Kedro Viz, while keeping inputs and outputs global to maintain connec
 
 from kedro.framework.project import find_pipelines
 from kedro.pipeline import Pipeline, pipeline
-from .pipelines import output_formatting, book_alignment
+from .pipelines import output_formatting, book_alignment, sense_induction
 
 
 def register_pipelines() -> dict[str, Pipeline]:
@@ -60,7 +60,9 @@ def register_pipelines() -> dict[str, Pipeline]:
         )
 
     pipelines["output_formatting"] = output_formatting.create_pipeline()
+    pipelines["output_formatting"] = output_formatting.create_pipeline()
     pipelines["book_alignment"] = book_alignment.create_pipeline()
+    pipelines["sense_induction"] = sense_induction.create_pipeline()
 
     # Create the default pipeline by combining all namespaced pipelines
     pipelines["__default__"] = sum(pipelines.values())

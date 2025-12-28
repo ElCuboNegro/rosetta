@@ -7,6 +7,10 @@ from kaikki.org, which has already been processed with wiktextract.
 import logging
 import urllib.request
 from pathlib import Path
+import time
+from bs4 import BeautifulSoup
+import requests
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -164,18 +168,32 @@ def download_gutenberg_data(languages: list[str], output_dir: str, limit: int = 
                     title = book.get("title", "Unknown").replace(":", "-").replace("/", "-")[:50]
                     book_id = book.get("id")
 
-                    # Find text/plain format
+                    # Find text/plain format (loose matching)
                     formats = book.get("formats", {})
-                    text_url = formats.get("text/plain; charset=utf-8") or formats.get("text/plain")
+                    text_url = None
+
+                    # Prioritize UTF-8
+                    for fmt, url in formats.items():
+                        if "text/plain" in fmt and "utf-8" in fmt:
+                            text_url = url
+                            break
+
+                    # Fallback to any text/plain
+                    if not text_url:
+                        for fmt, url in formats.items():
+                            if "text/plain" in fmt:
+                                text_url = url
+                                break
 
                     if not text_url:
+                        # logger.debug(f"Skipping {title}: No text/plain format found. Available: {list(formats.keys())}")
                         continue
 
                     filename = f"{book_id}_{title}.txt"
                     file_path = lang_dir / filename
 
                     if file_path.exists():
-                        logger.info(f"Skipping existing book: {filename}")
+                        # logger.info(f"Skipping existing book: {filename}")
                         downloaded_files.append(str(file_path))
                         books_downloaded += 1
                         continue
@@ -195,5 +213,191 @@ def download_gutenberg_data(languages: list[str], output_dir: str, limit: int = 
             except Exception as e:
                 logger.error(f"Error querying Gutendex: {e}")
                 break
+
+    return downloaded_files
+
+
+def download_benyehuda_data(
+    output_dir: str, limit: int = 20, languages: list[str] = None
+) -> list[str]:
+    """
+    Download Hebrew translated works from Ben Yehuda project.
+
+    Args:
+        output_dir: Directory to save the works.
+        limit: Maximum number of works to download.
+        languages: List of source language codes to filter by (e.g. ['en', 'es']).
+
+    Returns:
+        List of paths to downloaded JSON files.
+    """
+    import json
+
+    downloaded_files = []
+    output_path = Path(output_dir) / "ben_yehuda"
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    base_url = "https://benyehuda.org"
+    search_url = f"{base_url}/works"
+
+    # Build params dict
+    params = {"sort_by": "alphabetical_asc"}
+    if languages:
+        params["ckb_languages[]"] = languages
+
+    session = requests.Session()
+    session.headers.update(
+        {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+    )
+
+    works_processed = 0
+    # Initial request will use params, subsequent pagination might use full URLs from 'next' links
+    # So we handle the first request differently or just loop
+
+    current_page_url = search_url
+    first_request = True
+
+    while works_processed < limit and current_page_url:
+        logger.info(f"Processing search page: {current_page_url}")
+        try:
+            if first_request:
+                response = session.get(current_page_url, params=params)
+                first_request = False
+            else:
+                response = session.get(current_page_url)
+
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            # Find work links
+            work_links = []
+            # Selector from research: ol li a[href^='/read/']
+            # We can use a broader select to be safe
+            for a in soup.select("a[href^='/read/']"):
+                if "/read/" in a["href"] and "read" not in a.text:  # Avoid navigation links if any
+                    work_links.append(a["href"])
+
+            # Unique links
+            work_links = list(set(work_links))
+
+            for rel_link in work_links:
+                if works_processed >= limit:
+                    break
+
+                work_id = rel_link.split("/")[-1]
+                file_path = output_path / f"{work_id}.json"
+
+                if file_path.exists():
+                    logger.info(f"Skipping existing Ben Yehuda work: {work_id}")
+                    downloaded_files.append(str(file_path))
+                    works_processed += 1
+                    continue
+
+                work_url = f"{base_url}{rel_link}"
+                logger.info(f"Processing work: {work_url}")
+
+                try:
+                    # 1. Get work page for metadata and token
+                    w_resp = session.get(work_url)
+                    w_resp.raise_for_status()
+                    w_soup = BeautifulSoup(w_resp.text, "html.parser")
+
+                    # Metadata extraction
+                    title = w_soup.title.string if w_soup.title else "Unknown"
+
+                    metadata_entries = []
+                    for meta in w_soup.select(".metadata"):
+                        text = meta.get_text(strip=True)
+                        if text:
+                            metadata_entries.append(text)
+
+                    # Attempt to parse specific fields
+                    original_title = None
+                    for entry in metadata_entries:
+                        # Common patterns for original title
+                        # Note: This is heuristic and depends on exact site wording
+                        if "מקור" in entry or "Translated" in entry:
+                            # Store potential candidates
+                            pass
+
+                    # Extract authenticity_token for download
+                    token = None
+                    form = w_soup.find("form", action=lambda x: x and "download" in x)
+                    if form:
+                        token_input = form.find("input", {"name": "authenticity_token"})
+                        if token_input:
+                            token = token_input["value"]
+
+                    if not token:
+                        token_input = w_soup.find("input", {"name": "authenticity_token"})
+                        if token_input:
+                            token = token_input["value"]
+
+                    if not token:
+                        logger.warning(
+                            f"Could not find download token for {work_id}, skipping download."
+                        )
+                        continue
+
+                    # 2. Download Text via POST
+                    download_url = f"{base_url}/download/{work_id}"
+                    payload = {"authenticity_token": token, "format": "txt", "commit": "הורדה"}
+
+                    dl_resp = session.post(download_url, data=payload)
+                    dl_resp.encoding = "utf-8"  # Force UTF-8 for Hebrew content
+
+                    content = ""
+                    if dl_resp.status_code == 200:
+                        content = dl_resp.text
+                    else:
+                        logger.warning(
+                            f"Failed to download text for {work_id}: {dl_resp.status_code}"
+                        )
+                        continue
+
+                    # Construct data object
+                    data = {
+                        "id": work_id,
+                        "url": work_url,
+                        "title": title,
+                        "content": content,
+                        "metadata": {"scraped_at": time.time(), "raw_metadata": metadata_entries},
+                    }
+
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        json.dump(data, f, ensure_ascii=False, indent=2)
+
+                    downloaded_files.append(str(file_path))
+                    works_processed += 1
+
+                    time.sleep(1)  # Be nice
+
+                except Exception as e:
+                    logger.error(f"Error processing work {work_id}: {e}")
+
+            # Find next page
+            # Selector: .browse_paging -> finding "Next" or checking href
+            # Simple check for now: look for link with text "לדף הבא" (to next page) or similar
+            next_link = None
+            pagination = soup.select_one(".browse_paging")
+            if pagination:
+                for a in pagination.find_all("a"):
+                    if "הבא" in a.text or "next" in a.text.lower():
+                        next_link = a["href"]
+                        break
+
+            if next_link:
+                if next_link.startswith("http"):
+                    current_page_url = next_link
+                else:
+                    current_page_url = f"{base_url}{next_link}"
+            else:
+                current_page_url = None
+
+        except Exception as e:
+            logger.error(f"Error processing search page: {e}")
+            break
 
     return downloaded_files

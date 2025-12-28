@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Dict, Tuple
 import pandas as pd
 import spacy
+import torch
 from sentence_transformers import SentenceTransformer, util
 
 logger = logging.getLogger(__name__)
@@ -31,105 +32,130 @@ def _segment_sentences_he(text: str) -> List[str]:
 
 def align_books(gutenberg_files: List[str]) -> pd.DataFrame:
     """
-    Ingest and align books from the Gutenberg download list.
+    Ingest and align books from the Gutenberg download list using Semantic Title Matching.
 
     Args:
         gutenberg_files: List of file paths to downloaded books.
 
     Returns:
-        DataFrame with aligned sentence pairs ['source_es', 'target_he', 'similarity', 'book_id'].
+        DataFrame with aligned sentence pairs ['source_es', 'target_he', 'similarity', 'source_book', 'target_book'].
     """
-    # 1. Group files by Book ID (assuming filename format "{id}_{title}.txt")
-    # We need pairs. Gutenberg doesn't guarantee pairs.
-    # User strategy: "Get as many books as we can... make the alignment".
-    # Since we can't guarantee exact book-to-book translation pairs from random Gutenberg downloads,
-    # This node implements the "Massive Parallelism" hypothesis:
-    # Try to align *chunks* of Spanish books to *chunks* of Hebrew books?
-    # NO, that will fail. We need Parallel Corpora.
-    #
-    # FALLBACK FOR PROTOTYPE:
-    # If we don't have explicit pairs, we can't align specific books.
-    # However, for the purpose of the pipeline structure, we'll assume the user
-    # manually provides pairs or we find them.
-    #
-    # Current logic:
-    # 1. Look for matching filenames in ES and HE directories?
-    # Gutenberg IDs are unique per book, so ID 1234 (ES) != ID 5678 (HE).
-    # We need to match by Title Fuzzy Match.
-
     # Organize by language
-    es_files = [f for f in gutenberg_files if "\\es\\" in f or "/es/" in f]
-    he_files = [f for f in gutenberg_files if "\\he\\" in f or "/he/" in f]
+    es_files = [f for f in gutenberg_files if "\\es\\" in f or "/es/" in f or "_es_" in f]
+    he_files = [f for f in gutenberg_files if "\\he\\" in f or "/he/" in f or "_he_" in f]
 
-    logger.info(f"Found {len(es_files)} Spanish books and {len(he_files)} Hebrew books.")
+    logger.info(
+        f"Scanning for alignments among {len(es_files)} Spanish and {len(he_files)} Hebrew books."
+    )
 
-    # Load Model (LaBSE is standard for bitext mining)
+    if not es_files or not he_files:
+        logger.warning("Insufficient data to perform alignment.")
+        return pd.DataFrame(
+            columns=["source_es", "target_he", "similarity", "source_book", "target_book"]
+        )
+
+    # Load Model (LaBSE is standard for bitext mining and cross-lingual similarity)
     model_name = "sentence-transformers/LaBSE"
     logger.info(f"Loading alignment model: {model_name}")
     model = SentenceTransformer(model_name)
 
+    # --- Step 1: Semantic Title Matching ---
+    logger.info("Performing Semantic Title Matching...")
+
+    def extract_title(filepath):
+        # Filename: "{id}_{title}.txt" -> "title"
+        name = Path(filepath).stem
+        parts = name.split("_", 1)
+        title = parts[1] if len(parts) > 1 else name
+        return title.replace("-", " ").replace("_", " ")
+
+    es_titles = [extract_title(f) for f in es_files]
+    he_titles = [extract_title(f) for f in he_files]
+
+    # Embed titles
+    es_title_embeddings = model.encode(es_titles, convert_to_tensor=True)
+    he_title_embeddings = model.encode(he_titles, convert_to_tensor=True)
+
+    # Compute pairwise similarity
+    # util.cos_sim returns query x corpus matrix
+    cosine_scores = util.cos_sim(es_title_embeddings, he_title_embeddings)
+
+    matched_pairs = []
+
+    # Threshold for title matching (titles are short, so high semantic overlap is expected for translations)
+    TITLE_SIMILARITY_THRESHOLD = 0.70
+
+    # Find best matches
+    # Iterate over ES titles and find best HE match
+    for i, es_title in enumerate(es_titles):
+        best_score_idx = torch.argmax(cosine_scores[i]).item()
+        best_score = cosine_scores[i][best_score_idx].item()
+
+        if best_score > TITLE_SIMILARITY_THRESHOLD:
+            he_title = he_titles[best_score_idx]
+            logger.info(
+                f"MATCH FOUND: '{es_title}' (ES) <-> '{he_title}' (HE) [Score: {best_score:.4f}]"
+            )
+            matched_pairs.append((es_files[i], he_files[best_score_idx]))
+
+    if not matched_pairs:
+        logger.warning(
+            "No book titles matched above threshold. Attempting generic alignment on ALL combinations (Warning: Expensive!) or Aborting."
+        )
+        # For prototype safety, we abort if titles don't match to avoid N*M explosion.
+        # But let's log the top candidate just to see.
+        best_overall = torch.max(cosine_scores).item()
+        logger.warning(f"Best ignored match score was: {best_overall:.4f}")
+        return pd.DataFrame(
+            columns=["source_es", "target_he", "similarity", "source_book", "target_book"]
+        )
+
+    # --- Step 2: Content Alignment for Matched Pairs ---
     aligned_data = []
 
-    # Naive O(N*M) title matching or simply comparing content?
-    # For now, let's try to find high-confidence sentence pairs across the *entire corpus*?
-    # No, that's computationally explosive (100 books * 5000 sentences...).
-    #
-    # Strategy: Assume unrelated books, but maybe we get lucky?
-    # OR, assume the user will drop valid pairs in `data/01_raw/alignments`.
-    # Let's support the `data/01_raw/alignments/BOOK_NAME/{es.txt, he.txt}` structure mentioned in plan.
-    # AND try to process the Gutenberg ones if they seem paired.
+    for src_file, tgt_file in matched_pairs:
+        src_path = Path(src_file)
+        tgt_path = Path(tgt_file)
 
-    # Let's implement the explicit folder structure parsing FIRST as it's more reliable.
-    # Flatten Gutenberg imports into this structure if we found matches.
-    # For now, let's iterate available pairs.
+        logger.info(f"Aligning content: {src_path.name} <-> {tgt_path.name}")
 
-    # Mocking a "Search for pairs" by aligning the first ES book with the first HE book
-    # just to demonstrate the PIPELINE logic.
-    if not es_files or not he_files:
-        logger.warning("Not enough data to align.")
-        return pd.DataFrame(columns=["source_es", "target_he", "similarity", "source_book"])
+        src_text = src_path.read_text(encoding="utf-8", errors="replace")
+        tgt_text = tgt_path.read_text(encoding="utf-8", errors="replace")
 
-    # Demo: Align first ES with first HE (Likely garbage, but proves pipeline)
-    # IN REALITY: We need heuristics to match titles.
+        src_sents = _segment_sentences_es(src_text)
+        tgt_sents = _segment_sentences_he(tgt_text)
 
-    src_path = Path(es_files[0])
-    tgt_path = Path(he_files[0])
+        logger.info(f"Sentences: {len(src_sents)} (ES) x {len(tgt_sents)} (HE)")
 
-    logger.info(f"Attempting alignment between {src_path.name} and {tgt_path.name}")
+        # Compute Sentence Embeddings
+        src_emb = model.encode(
+            src_sents, batch_size=32, show_progress_bar=False, convert_to_tensor=True
+        )
+        tgt_emb = model.encode(
+            tgt_sents, batch_size=32, show_progress_bar=False, convert_to_tensor=True
+        )
 
-    src_text = src_path.read_text(encoding="utf-8")
-    tgt_text = tgt_path.read_text(encoding="utf-8")
+        # Mine bitext
+        # We use a stricter threshold for sentences
+        hits = util.semantic_search(src_emb, tgt_emb, top_k=1)
 
-    src_sents = _segment_sentences_es(src_text)
-    tgt_sents = _segment_sentences_he(tgt_text)
+        for i, hit in enumerate(hits):
+            if not hit:
+                continue
+            best_hit = hit[0]
+            score = best_hit["score"]
+            tgt_idx = best_hit["corpus_id"]
 
-    # Compute embeddings
-    # Batch size important for speed
-    logger.info("Encoding sentences...")
-    src_embeddings = model.encode(src_sents, batch_size=32, show_progress_bar=True)
-    tgt_embeddings = model.encode(tgt_sents, batch_size=32, show_progress_bar=True)
+            if score > 0.75:  # LaBSE threshold for strong bitext
+                aligned_data.append(
+                    {
+                        "source_es": src_sents[i],
+                        "target_he": tgt_sents[tgt_idx],
+                        "similarity": score,
+                        "source_book": src_path.name,
+                        "target_book": tgt_path.name,
+                    }
+                )
 
-    # Find matches (Approximate Nearest Neighbors or Brute Force for small books)
-    # Using util.semantic_search
-    logger.info("Mining pairs...")
-    hits = util.semantic_search(src_embeddings, tgt_embeddings, top_k=1)
-
-    for i, hit in enumerate(hits):
-        if not hit:
-            continue
-        best_hit = hit[0]
-        score = best_hit["score"]
-        tgt_idx = best_hit["corpus_id"]
-
-        if score > 0.75:  # LaBSE threshold for "good translation"
-            aligned_data.append(
-                {
-                    "source_es": src_sents[i],
-                    "target_he": tgt_sents[tgt_idx],
-                    "similarity": score,
-                    "source_book": src_path.name,
-                }
-            )
-
-    logger.info(f"Generated {len(aligned_data)} aligned sentence pairs.")
+    logger.info(f"Total aligned sentences generated: {len(aligned_data)}")
     return pd.DataFrame(aligned_data)

@@ -218,9 +218,17 @@ gutenberg_files_list:
   type: json.JSONDataset
   filepath: data/01_raw/gutenberg/downloaded_manifest.json
 
+ben_yehuda_files_list:
+  type: json.JSONDataset
+  filepath: data/01_raw/ben_yehuda/downloaded_manifest.json
+
 aligned_book_sentences:
   type: pandas.ParquetDataset
   filepath: data/02_intermediate/aligned_books.parquet
+
+induced_senses_clusters:
+  type: pandas.ParquetDataset
+  filepath: data/04_feature/sense_clusters.parquet
 
 spanish_wiktionary_json:
   type: text.TextDataset

@@ -12,7 +12,7 @@ def create_pipeline(**kwargs) -> Pipeline:
         [
             node(
                 func=process_wiktionary_examples,
-                inputs="raw_spanish_entries",
+                inputs="raw_spanish_entries_unfiltered",
                 outputs="wiktionary_examples_tagged",
                 name="process_wiktionary_examples_node",
             ),

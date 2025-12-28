@@ -1,9 +1,30 @@
 # Pipeline Parameters
 
 # Pre-extracted Wiktionary data from kaikki.org
-# This is much faster than parsing XML dumps and has all templates/Lua expanded
-# Using multiple languages for triangulation to improve coverage
+kaikki:
+  spanish_lang_code: "Spanish"
+  hebrew_lang_code: "Hebrew"
+  english_lang_code: "English"
   # Note: kaikki.org provides uncompressed .jsonl files (not .gz)
   es_data_path: "data/01_raw/es-wiktionary-kaikki.jsonl"
   he_data_path: "data/01_raw/he-wiktionary-kaikki.jsonl"
   en_data_path: "data/01_raw/en-wiktionary-kaikki.jsonl"
+
+# Project Gutenberg Data Acquisition
+gutenberg_languages:
+  - "es"
+  - "he"
+gutenberg_path: "data/01_raw/gutenberg"
+gutenberg_limit: 200
+
+# Sense Induction
+sense_induction_params:
+  min_examples: 5
+  max_clusters: 3
+
+benyehuda_path: "data/01_raw"
+benyehuda_limit: 30000
+benyehuda_languages:
+  - "en"
+  - "es"
+
