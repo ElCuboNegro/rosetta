@@ -1,38 +1,18 @@
-version: '3.8'
-
 services:
-  rosetta:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: rosetta-dict
-    volumes:
-      # Mount data directory for persistence
-      - ./data:/app/data
-      # Mount conf for easy configuration updates
-      - ./conf:/app/conf
-      # Mount notebooks for Jupyter
-      - ./notebooks:/app/notebooks
-      # Mount .viz for Kedro Viz pipeline execution tracking
-      - ./.viz:/app/.viz
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: rosetta-db
     ports:
-      # Jupyter (if needed)
-      - "8888:8888"
+      - "5432:5432"
     environment:
-      - KEDRO_LOGGING_CONFIG=conf/logging.yml
-    command: kedro run
-
-  # Service for running Kedro Viz
-  viz:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: rosetta-viz
+      - POSTGRES_DB=rosetta
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=rosetta_password
     volumes:
-      - ./data:/app/data
-      - ./conf:/app/conf
-      # Mount .viz for Kedro Viz pipeline execution tracking
-      - ./.viz:/app/.viz
-    ports:
-      - "4141:4141"
-    command: kedro viz --host 0.0.0.0 --port 4141
+      - ./data/postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d rosetta" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5

@@ -6,11 +6,14 @@ from kaikki.org, which has already been processed with wiktextract.
 
 import logging
 import urllib.request
+import json
+from typing import List, Dict, Any
 from pathlib import Path
 import time
 from bs4 import BeautifulSoup
 import requests
 import re
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -399,5 +402,103 @@ def download_benyehuda_data(
         except Exception as e:
             logger.error(f"Error processing search page: {e}")
             break
+
+    return downloaded_files
+
+
+def download_books_from_matches(
+    matches_df: pd.DataFrame, output_dir: str = "data/01_raw/gutenberg_counterparts"
+) -> List[str]:
+    """
+    Download Gutenberg books based on aligned matches.
+
+    Args:
+        matches_df: DataFrame containing 'gutenberg_id' column.
+        output_dir: Directory to save downloaded books.
+
+    Returns:
+        List of paths to downloaded files.
+    """
+    if matches_df.empty:
+        logger.warning("No matches provided for download.")
+        return []
+
+    # Extract unique IDs
+    # matches_df should have 'gutenberg_id'.
+    if "gutenberg_id" not in matches_df.columns:
+        logger.error("matches_df missing 'gutenberg_id' column.")
+        return []
+
+    gutenberg_ids = matches_df["gutenberg_id"].dropna().unique().tolist()
+    logger.info(f"Downloading {len(gutenberg_ids)} Gutenberg books from matches...")
+
+    base_path = Path(output_dir)
+    base_path.mkdir(parents=True, exist_ok=True)
+
+    downloaded_files = []
+
+    # Batch processing (Gutendex supports multiple IDs)
+    batch_size = 32
+
+    for i in range(0, len(gutenberg_ids), batch_size):
+        batch = gutenberg_ids[i : i + batch_size]
+        ids_str = ",".join(map(str, batch))
+
+        url = f"https://gutendex.com/books?ids={ids_str}"
+
+        try:
+            resp = requests.get(url)
+            if resp.status_code != 200:
+                logger.error(f"Failed to fetch metadata for batch {i}: {resp.status_code}")
+                continue
+
+            data = resp.json()
+            results = data.get("results", [])
+
+            for book in results:
+                book_id = book["id"]
+                title = book["title"][:50].replace(":", "-").replace("/", "-")
+                lang = book["languages"][0] if book.get("languages") else "unknown"
+
+                # Language subfolder?
+                lang_dir = base_path / lang
+                lang_dir.mkdir(exist_ok=True)
+
+                filename = f"{book_id}_{title}.txt"
+                file_path = lang_dir / filename
+
+                if file_path.exists():
+                    downloaded_files.append(str(file_path))
+                    continue
+
+                # Find text url
+                text_url = None
+                for fmt, link in book["formats"].items():
+                    if "text/plain" in fmt and "utf-8" in fmt:
+                        text_url = link
+                        break
+                if not text_url:
+                    for fmt, link in book["formats"].items():
+                        if "text/plain" in fmt:
+                            text_url = link
+                            break
+
+                if text_url:
+                    try:
+                        dl_resp = requests.get(text_url)
+                        dl_resp.encoding = "utf-8"
+                        file_path.write_text(dl_resp.text, encoding="utf-8")
+                        downloaded_files.append(str(file_path))
+                        logger.info(f"Downloaded: {filename}")
+                        time.sleep(0.2)
+                    except Exception as e:
+                        logger.warning(f"Failed to download content for {book_id}: {e}")
+                else:
+                    logger.warning(f"No text format for book {book_id}")
+
+            time.sleep(0.5)
+
+        except Exception as e:
+            logger.error(f"Error processing batch {i}: {e}")
 
     return downloaded_files

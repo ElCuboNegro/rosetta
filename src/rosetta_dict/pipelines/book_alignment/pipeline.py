@@ -7,7 +7,12 @@ def create_pipeline(**kwargs) -> Pipeline:
         [
             node(
                 func=align_books,
-                inputs="gutenberg_files_list",
+                inputs=[
+                    "gutenberg_files_list",
+                    "gutenberg_counterparts_list",
+                    "ben_yehuda_files_list",
+                    "aligned_catalogs",
+                ],
                 outputs="aligned_book_sentences",
                 name="align_books_node",
             ),

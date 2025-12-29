@@ -8,7 +8,7 @@ feature in Kedro Viz, while keeping inputs and outputs global to maintain connec
 
 from kedro.framework.project import find_pipelines
 from kedro.pipeline import Pipeline, pipeline
-from .pipelines import output_formatting, book_alignment, sense_induction
+from .pipelines import output_formatting, book_alignment, sense_induction, catalog_alignment
 
 
 def register_pipelines() -> dict[str, Pipeline]:
@@ -49,6 +49,11 @@ def register_pipelines() -> dict[str, Pipeline]:
             if "enriched_entries" in inputs:
                 inputs["enriched_entries"] = "language_alignment.enriched_entries"
 
+        # Wire language_alignment to receive vector clusters from sense_induction
+        if name == "language_alignment":
+            if "induced_senses_clusters" in inputs:
+                inputs["induced_senses_clusters"] = "sense_induction.induced_senses_clusters"
+
         # Wrap in namespace using the pipeline name
         # This creates the modular pipeline structure in Kedro Viz
         pipelines[name] = pipeline(
@@ -59,12 +64,26 @@ def register_pipelines() -> dict[str, Pipeline]:
             parameters=params,
         )
 
-    pipelines["output_formatting"] = output_formatting.create_pipeline()
-    pipelines["output_formatting"] = output_formatting.create_pipeline()
-    pipelines["book_alignment"] = book_alignment.create_pipeline()
-    pipelines["sense_induction"] = sense_induction.create_pipeline()
+    # Explicitly register pipelines that might be missed by find_pipelines
+    # We apply the same namespacing logic as the loop above
+    for name, module in [
+        ("sense_induction", sense_induction),
+        ("book_alignment", book_alignment),
+        ("catalog_alignment", catalog_alignment),
+        ("output_formatting", output_formatting),
+    ]:
+        pipe = module.create_pipeline()
+        all_inputs = pipe.inputs()
+        params = {n: n for n in all_inputs if n.startswith("params:") or n == "parameters"}
+        inputs = {n: n for n in all_inputs if n not in params}
 
-    # Create the default pipeline by combining all namespaced pipelines
+        pipelines[name] = pipeline(
+            pipe,
+            namespace=name,
+            inputs=inputs,
+            outputs={ds: ds for ds in pipe.outputs()},
+            parameters=params,
+        )
     pipelines["__default__"] = sum(pipelines.values())
 
     return pipelines

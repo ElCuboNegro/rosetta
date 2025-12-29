@@ -5,15 +5,12 @@ fuzzy matching (rapidfuzz) and enriches entries with example sentences.
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import pandas as pd
-from rapidfuzz import fuzz, process
+from rapidfuzz import fuzz
 
 logger = logging.getLogger(__name__)
-
-
-from typing import Any, Dict, List, Tuple
 
 
 def align_languages(
@@ -44,7 +41,7 @@ def align_languages(
     alignments = []
     matched_es_words = set()
     matched_he_words = set()
-    stats = {"direct": 0, "triangulation": 0, "fuzzy": 0, "failed": 0}
+    stats = {"direct": 0, "triangulation": 0, "failed": 0}
 
     # Strategy 1: Direct translations
     for _, es_row in spanish_df.iterrows():
@@ -192,81 +189,9 @@ def align_languages(
             f"Triangulation alignments: {stats['triangulation']} (from {stats_triang_attempt} candidates)"
         )
 
-    # Strategy 3: Fuzzy definition matching (OPTIMIZED with rapidfuzz.process)
-    logger.info("Attempting fuzzy definition matching for ALL remaining entries...")
-    aligned_es_words = set(a["es_word"] for a in alignments)
-    fuzzy_threshold = 80  # Lowered threshold for better coverage
-
-    # Get all remaining Spanish entries, sorted by frequency rank
-    remaining_es = spanish_df[~spanish_df["word"].isin(aligned_es_words)].copy()
-
-    # Sort by frequency rank if available (prioritize common words)
-    if "frequency_rank" in remaining_es.columns:
-        remaining_es = remaining_es.sort_values("frequency_rank")
-        logger.info(f"Processing {len(remaining_es)} remaining entries by frequency priority...")
-    else:
-        logger.info(f"Processing {len(remaining_es)} remaining entries...")
-
-    # Pre-build Hebrew candidates dictionary for O(1) lookup after matching
-    he_candidates_dict = {}
-    he_definitions_list = []
-
-    for idx, he_row in hebrew_df.iterrows():
-        he_defs = he_row["definitions"] if isinstance(he_row["definitions"], list) else []
-        if he_defs:
-            he_def_text = " ".join(he_defs)
-            he_definitions_list.append(he_def_text)
-            he_candidates_dict[he_def_text] = he_row
-
-    logger.info(
-        f"Built index of {len(he_definitions_list)} Hebrew candidates for optimized fuzzy matching"
-    )
-
-    # Process all remaining entries with OPTIMIZED matching using process.extractOne
-    for idx, (_, es_row) in enumerate(remaining_es.iterrows()):
-        if (idx + 1) % 1000 == 0:
-            logger.info(
-                f"Fuzzy matching progress: {idx + 1}/{len(remaining_es)} ({stats['fuzzy']} matches found)"
-            )
-
-        es_word = es_row["word"]
-        es_defs = es_row["definitions"] if isinstance(es_row["definitions"], list) else []
-
-        if not es_defs:
-            continue
-
-        es_def_text = " ".join(es_defs)
-
-        # OPTIMIZED: Use process.extractOne for O(n log n) instead of O(n²)
-        # This is 10-100x faster for large datasets
-        result = process.extractOne(
-            es_def_text, he_definitions_list, scorer=fuzz.ratio, score_cutoff=fuzzy_threshold
-        )
-
-        if result is not None:
-            best_match_def, best_score, _ = result
-            best_match = he_candidates_dict[best_match_def]
-            he_defs = (
-                best_match["definitions"] if isinstance(best_match["definitions"], list) else []
-            )
-
-            alignments.append(
-                {
-                    "es_word": es_word,
-                    "es_ipa": es_row["ipa"],
-                    "es_pos": es_row["pos"],
-                    "es_definition": es_defs[0] if es_defs else "",
-                    "he_word": best_match["word"],
-                    "he_ipa": best_match["ipa"],
-                    "he_definition": he_defs[0] if he_defs else "",
-                    "sense_id": 1,
-                    "match_type": f"fuzzy_{best_score}",
-                    "confidence": best_score / 100.0,
-                }
-            )
-            stats["fuzzy"] += 1
-
-    logger.info(f"Fuzzy alignments completed: {stats['fuzzy']} matches found (OPTIMIZED algorithm)")
+    # Strategy 3: Fuzzy definition matching - REMOVED per user request (yielded 0 matches)
+    # logger.info("Attempting fuzzy definition matching for ALL remaining entries...")
+    # (Code removed)
 
     # --- Identify Orphans ---
     logger.info("Identifying orphaned entries...")
@@ -350,14 +275,18 @@ def enrich_entries(aligned_df: pd.DataFrame, examples_df: pd.DataFrame) -> pd.Da
     return df
 
 
-def cluster_polysemic_senses(enriched_df: pd.DataFrame) -> pd.DataFrame:
+def cluster_polysemic_senses(
+    enriched_df: pd.DataFrame, induced_clusters: pd.DataFrame = None
+) -> pd.DataFrame:
     """Cluster related senses for polysemic words using semantic similarity.
 
-    For words with multiple senses, this groups semantically similar senses
-    together and assigns cluster IDs for better organization.
+    Strategies:
+    1. Vectorial Clustering (Priority): Uses BERT embeddings from sense_induction pipeline.
+    2. Fuzzy Clustering (Fallback): Uses rapidfuzz on definition text.
 
     Args:
         enriched_df: DataFrame with aligned word pairs
+        induced_clusters: DataFrame with vector-based sense clusters (optional)
 
     Returns:
         DataFrame with added semantic_cluster column
@@ -367,11 +296,63 @@ def cluster_polysemic_senses(enriched_df: pd.DataFrame) -> pd.DataFrame:
     enriched_df = enriched_df.copy()
     enriched_df["semantic_cluster"] = 1  # Default cluster
 
+    # Pre-process induced clusters for fast lookup if available
+    vector_map = {}  # {word: {cluster_id: [examples]}}
+    if induced_clusters is not None and not induced_clusters.empty:
+        logger.info(f"Using vectorial clusters from {len(induced_clusters)} examples")
+        for word, group in induced_clusters.groupby("source_word"):
+            vector_map[word] = {}
+            for _, row in group.iterrows():
+                cid = row["sense_cluster_id"]
+                if cid == -1:
+                    continue
+                if cid not in vector_map[word]:
+                    vector_map[word][cid] = []
+                vector_map[word][cid].append(row["sentence_text"])
+
     # Group by Spanish word to find polysemic entries
     for es_word, group in enriched_df.groupby("es_word"):
         if len(group) <= 1:
             continue  # Not polysemic
 
+        # Strategy 1: Vectorial Matching
+        # We try to match the examples in our enriched entry to the examples in the clusters
+        if es_word in vector_map:
+            # For each sense (row) in this word group
+            for idx, row in group.iterrows():
+                current_examples = [ex["es"] for ex in row["examples"]] if row["examples"] else []
+                if not current_examples:
+                    continue
+
+                # Check which cluster owns these examples
+                # Naive matching: if any example string matches exactly?
+                # Or containment? The example texts should be identical if they came from same source.
+                best_cluster = -1
+
+                # Check against all clusters for this word
+                found_match = False
+                for cid, cluster_examples in vector_map[es_word].items():
+                    for ex in current_examples:
+                        if ex in cluster_examples:
+                            best_cluster = cid
+                            found_match = True
+                            break
+                    if found_match:
+                        break
+
+                if found_match:
+                    enriched_df.at[idx, "semantic_cluster"] = (
+                        best_cluster + 100
+                    )  # Offset to distinguish?
+                    # Or just use the ID. Let's use ID + 100 to avoid confusion with sense_id 1
+                    # Actually, if we trust the vector clustering, we should align on that.
+
+            # Continue to next word (skip fuzzy fallback if vectors exist?
+            # Or mix? For now, if vectors exist, we rely on them.
+            # If some senses didn't get matched (no examples), they stay default 1.)
+            continue
+
+        # Strategy 2: Fuzzy Definition Matching (Fallback)
         # Build definition similarity matrix
         definitions = group["es_definition"].tolist()
         n = len(definitions)

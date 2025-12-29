@@ -222,6 +222,10 @@ ben_yehuda_files_list:
   type: json.JSONDataset
   filepath: data/01_raw/ben_yehuda/downloaded_manifest.json
 
+gutenberg_counterparts_list:
+  type: json.JSONDataset
+  filepath: data/01_raw/gutenberg_counterparts/downloaded_manifest.json
+
 aligned_book_sentences:
   type: pandas.ParquetDataset
   filepath: data/02_intermediate/aligned_books.parquet
@@ -229,6 +233,13 @@ aligned_book_sentences:
 induced_senses_clusters:
   type: pandas.ParquetDataset
   filepath: data/04_feature/sense_clusters.parquet
+
+sense_induction.induced_senses_clusters:
+  type: pandas.ParquetDataset
+  filepath: data/04_feature/sense_clusters.parquet
+  metadata:
+    kedro-viz:
+      layer: feature
 
 spanish_wiktionary_json:
   type: text.TextDataset
@@ -239,5 +250,36 @@ spanish_wiktionary_json:
     open_args_load:
       encoding: utf-8
   metadata:
+
+# ============================================================================
+# CATALOG ALIGNMENT DATA
+# ============================================================================
+
+gutenberg_catalog_raw:
+  type: pandas.ParquetDataset
+  filepath: data/01_raw/gutenberg_catalog.parquet
+  metadata:
     kedro-viz:
-      layer: reporting
+      layer: raw
+
+benyehuda_catalog_raw:
+  type: pandas.ParquetDataset
+  filepath: data/01_raw/benyehuda_catalog.parquet
+  metadata:
+    kedro-viz:
+      layer: raw
+
+benyehuda_catalog_enriched:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/benyehuda_catalog_enriched.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+aligned_catalogs:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/aligned_catalogs.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+

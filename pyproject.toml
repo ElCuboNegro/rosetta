@@ -15,7 +15,7 @@ dependencies = [
     "kedro[jupyter]~=1.0.0",
     "kedro-datasets[pandas-csvdataset, pandas-exceldataset, pandas-parquetdataset, plotly-plotlydataset, plotly-jsondataset, matplotlib-matplotlibwriter, MemoryDataset]>=3.0",
     "kedro-viz>=6.7.0",
-    "scikit-learn~=1.5.1",
+    "scikit-learn>=1.5.1",
     "seaborn~=0.12.1",
     "wiktextract>=1.99.0",
     "lupa",
@@ -25,11 +25,12 @@ dependencies = [
     "phonikud-onnx>=0.2.0",
     "spacy>=3.7.0",
     "transformers>=4.38.0",
-    "transformers>=4.38.0",
     "torch>=2.2.0",
     "requests>=2.31.0",
     "sentence-transformers>=2.5.0",
-    "scikit-learn>=1.4.0"
+    "hdbscan>=0.8.33",
+    "flask>=3.0.0",
+    "scipy>=1.11.0"
 ]
 
 [project.optional-dependencies]

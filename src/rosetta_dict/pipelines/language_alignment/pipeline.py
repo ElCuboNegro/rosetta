@@ -37,7 +37,10 @@ def create_pipeline(**kwargs) -> Pipeline:
             ),
             node(
                 func=cluster_polysemic_senses,
-                inputs="enriched_entries_raw",
+                inputs=[
+                    "enriched_entries_raw",
+                    "induced_senses_clusters",
+                ],
                 outputs="enriched_entries",
                 name="cluster_polysemic_senses_node",
                 tags=["alignment", "clustering", "polysemy"],

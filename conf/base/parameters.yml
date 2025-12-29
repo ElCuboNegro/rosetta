@@ -15,16 +15,45 @@ gutenberg_languages:
   - "es"
   - "he"
 gutenberg_path: "data/01_raw/gutenberg"
-gutenberg_limit: 200
+gutenberg_counterparts_path: "data/01_raw/gutenberg_counterparts"
+gutenberg_limit: 2000
 
-# Sense Induction
+# Sense Induction - Improved clustering with multiple strategies
 sense_induction_params:
+  # Minimum examples needed for clustering
   min_examples: 5
-  max_clusters: 3
+
+  # Maximum clusters to consider (for elbow method)
+  max_clusters: 10
+
+  # Clustering method: 'auto', 'kmeans', or 'hdbscan'
+  # 'auto' tries HDBSCAN first, falls back to optimal KMeans
+  clustering_method: auto
+
+  # Use ensemble embeddings (word + context + sentence)
+  use_ensemble_embeddings: true
+
+  # Minimum quality score to accept clustering (0.0 to 1.0)
+  # Clusters below this will be flagged for manual review
+  quality_threshold: 0.2
+
+  # Use pre-built word index for faster sentence retrieval
+  use_word_index: true
+
+  # Maximum number of book sentences to use per word
+  max_book_sentences_per_word: 50
 
 benyehuda_path: "data/01_raw"
 benyehuda_limit: 30000
 benyehuda_languages:
   - "en"
   - "es"
+
+# Catalog Alignment
+catalog_languages:
+  - "es"
+  - "en"
+benyehuda_dump_path: "data/01_raw/ben_yehuda_dump"
+alignment_threshold: 0.85
+
 
