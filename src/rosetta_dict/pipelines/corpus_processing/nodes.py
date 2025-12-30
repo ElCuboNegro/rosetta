@@ -56,7 +56,11 @@ def process_wiktionary_examples(entries_df: pd.DataFrame) -> pd.DataFrame:
         )
 
     logger.info(f"Processed {len(processed_data)} Wiktionary examples.")
-    return pd.DataFrame(processed_data)
+    df = pd.DataFrame(processed_data)
+    if not df.empty:
+        df.reset_index(inplace=True)
+        df.rename(columns={"index": "id"}, inplace=True)
+    return df
 
 
 def process_tatoeba_sentences(clean_examples_df: pd.DataFrame) -> pd.DataFrame:
@@ -91,4 +95,8 @@ def process_tatoeba_sentences(clean_examples_df: pd.DataFrame) -> pd.DataFrame:
         )
 
     logger.info(f"Processed {len(processed_data)} Tatoeba sentences.")
-    return pd.DataFrame(processed_data)
+    df = pd.DataFrame(processed_data)
+    if not df.empty:
+        df.reset_index(inplace=True)
+        df.rename(columns={"index": "id"}, inplace=True)
+    return df

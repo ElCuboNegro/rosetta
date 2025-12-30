@@ -1,162 +1,175 @@
-# Rosetta - Spanish-Hebrew Dictionary Generator
+# Rosetta Dictionary
 
-A production-ready Kedro pipeline for generating polysemic Spanish-Hebrew dictionaries from Wiktionary and Tatoeba data.
+A Spanish-Hebrew bilingual dictionary project built with Kedro, leveraging Wiktionary data, Project Gutenberg texts, and the Ben Yehuda corpus for cross-lingual learning and sense induction.
+
+## Overview
+
+This project creates a rich bilingual dictionary by:
+- Extracting entries from Spanish and Hebrew Wiktionary
+- Aligning parallel texts from Project Gutenberg and Ben Yehuda corpus
+- Performing word sense induction using contextual embeddings
+- Providing interactive tools for review and refinement
+
+## Tech Stack
+
+- **Pipeline Framework**: Kedro
+- **Database**: PostgreSQL
+- **NLP**: spaCy, sentence-transformers (BERT)
+- **Language**: Python 3.13+
+- **Data Sources**: Wiktionary (kaikki.org), Project Gutenberg, Ben Yehuda Archive
 
 ## Quick Start
 
-### 1. Install Dependencies
+### Prerequisites
+
+1. **PostgreSQL** (Docker recommended):
+   ```bash
+   docker-compose up -d
+   ```
+
+2. **Python Environment**:
+   ```bash
+   conda create -n rosetta python=3.13
+   conda activate rosetta
+   pip install -r requirements.txt
+   ```
+
+### Running the Pipeline
 
 ```bash
-pip install -e .
-```
+# Run full pipeline
+kedro run
 
-### 2. Run the Pipeline
-
-The pipeline automatically downloads pre-extracted Wiktionary data from kaikki.org:
-
-```bash
-python -m kedro run
-```
-
-**Note**: On first run, it downloads ~10-50 MB of compressed JSONL data from kaikki.org. This is pre-processed Wiktionary data with all templates and Lua modules already expanded - much faster and more reliable than parsing raw XML dumps.
-
-### 3. Download Tatoeba Sentences (Optional)
-
-```bash
-wget https://downloads.tatoeba.org/exports/sentences.tar.bz2
-tar -xjf sentences.tar.bz2
-mv sentences.csv data/01_raw/tatoeba-sentences.csv
-```
-
-### 4. View Results
-
-After running, check your generated dictionary:
-
-```bash
-cat data/08_reporting/dictionary_v1.json
-```
-
-## Pipeline Architecture
-
-The dictionary generation is split into three modular pipelines:
-
-### 1. **data_processing** (Harvester)
-Downloads and parses pre-extracted Wiktionary data:
-- `download_kaikki_data` - Downloads JSONL from kaikki.org (pre-processed with wiktextract)
-- `parse_spanish_wiktionary` - Parses Spanish entries from JSONL
-- `parse_hebrew_wiktionary` - Parses Hebrew entries from JSONL
-- `process_tatoeba` - Processes bilingual sentence pairs
-
-### 2. **data_science** (Aligner)
-Links languages and structures polysemic senses:
-- `align_languages` - Matches Spanish↔Hebrew using translation links + rapidfuzz
-- `enrich_entries` - Adds example sentences from Tatoeba
-- `structure_senses` - Groups by word, creates sense_id for each meaning
-
-### 3. **reporting** (Architect)
-Final JSON formatting with metadata:
-- `format_final_json` - Wraps data with version, source, and date
-
-## Output Format
-
-Generates JSON matching this exact schema:
-
-```json
-{
-  "metadata": {
-    "language_direction": "es-he | he-es",
-    "version": "1.0",
-    "source": "custom (Wiktionary + Tatoeba)",
-    "generated_at": "2025-12-03"
-  },
-  "entries": [
-    {
-      "id": "es: banco",
-      "entry": {
-        "word": "banco",
-        "ipa": "ˈbaŋ.ko",
-        "language": "es",
-        "etymology": null,
-        "senses": [
-          {
-            "sense_id": 1,
-            "definition": "Asiento alargado para varias personas.",
-            "ipa_hebrew": "saˈf-sal",
-            "hebrew": "ספסל",
-            "pos": "noun",
-            "examples": [
-              {
-                "es": "Nos sentamos en el banco del parque.",
-                "he": "ישבנו על הספסל בפארק."
-              }
-            ]
-          }
-        ]
-      }
-    }
-  ]
-}
-```
-
-## Development
-
-### Run Specific Pipelines
-
-```bash
-# Run only harvester
-python -m kedro run --pipeline=data_processing
-
-# Run only aligner
-python -m kedro run --pipeline=data_science
-
-# Run only architect
-python -m kedro run --pipeline=reporting
-```
-
-### Parallel Execution
-
-For faster processing of large dumps:
-
-```bash
-python -m kedro run --runner=ParallelRunner
-```
-
-### Kedro Viz
-
-Visualize the pipeline:
-
-```bash
-python -m kedro viz
+# Run specific pipeline
+kedro run --pipeline=data_acquisition
+kedro run --pipeline=catalog_alignment
+kedro run --pipeline=book_alignment
+kedro run --pipeline=sense_induction
 ```
 
 ## Project Structure
 
 ```
 rosetta/
-├── conf/
-│   └── base/
-│       └── catalog.yml          # Data sources configuration
-├── data/
-│   ├── 01_raw/                  # Input: Wiktionary dumps, Tatoeba
-│   ├── 02_intermediate/         # Parsed entries
-│   ├── 03_primary/              # Aligned & enriched data
-│   └── 08_reporting/            # Final dictionary JSON
-└── src/rosetta_dict/
-    └── pipelines/
-        ├── data_processing/     # Harvester nodes
-        ├── data_science/        # Aligner nodes
-        └── reporting/           # Architect nodes
+├── conf/                       # Kedro configuration
+│   ├── base/
+│   │   ├── catalog.yml        # Data catalog (PostgreSQL datasets)
+│   │   └── parameters.yml     # Pipeline parameters
+│   └── local/
+│       └── credentials.yml    # Database credentials (not in git)
+├── data/                      # Data directory
+│   ├── 01_raw/               # Raw data sources
+│   │   ├── ben_yehuda_dump/  # Hebrew corpus (~25K texts)
+│   │   └── gutenberg/        # Project Gutenberg downloads
+│   ├── 02_intermediate/      # Processed data
+│   ├── 03_primary/           # Aligned dictionaries
+│   └── 04_feature/           # Sense clusters
+├── src/rosetta_dict/
+│   └── pipelines/            # Kedro pipelines
+│       ├── data_acquisition/  # Download & parse Wiktionary/Gutenberg
+│       ├── catalog_alignment/ # Match book catalogs (BERT)
+│       ├── book_alignment/    # Align sentence pairs
+│       ├── sense_induction/   # Cluster word senses
+│       └── ...
+├── scripts/                   # Utility scripts
+│   ├── cluster_review_ui.py  # Interactive sense review
+│   └── ...
+├── migrations/                # PostgreSQL schema migrations
+└── .llm-docs/                 # AI-generated documentation (see .llm-docs/README.md)
 ```
 
-## Dependencies
+## Key Features
 
-Core libraries:
-- `kedro~=1.0.0` - Pipeline orchestration
-- `wiktextract>=1.99.0` - Wiktionary parsing
-- `rapidfuzz>=3.0.0` - Fuzzy string matching
-- `pandas>=2.0.0` - Data manipulation
-- `pyarrow>=15.0.0` - Parquet support
+### 1. Multilingual Catalog Alignment
+- Matches Ben Yehuda (Hebrew) books with Gutenberg (Spanish/English) using BERT embeddings
+- Wikidata enrichment for author matching
+- **268 validated alignments** with false positive prevention
+
+### 2. Book-Level Sentence Alignment
+- LaBSE embeddings for cross-lingual similarity
+- Hebrew sentence segmentation with line-joining heuristics
+- Validation using BookPairValidator
+
+### 3. Word Sense Induction
+- Clusters word usage contexts using HDBSCAN/KMeans
+- Ensemble embeddings (word + context + sentence)
+- Quality metrics and manual review UI
+
+### 4. PostgreSQL Integration
+- All data persisted in PostgreSQL
+- ~1.7M rows across 24 tables
+- Full migration from Parquet completed
+
+## Documentation
+
+For detailed guides and development notes, see [`.llm-docs/README.md`](.llm-docs/README.md):
+- PostgreSQL setup and migration
+- Pipeline parameters and configuration
+- Feature guides (book validation, sense clustering, etc.)
+- Development improvements and fixes
+
+## Database
+
+### Tables (Selected)
+
+| Table | Rows | Description |
+|-------|------|-------------|
+| `raw_spanish_entries` | 787,115 | Spanish Wiktionary entries |
+| `benyehuda_catalog_raw` | 24,973 | Ben Yehuda book metadata |
+| `raw_hebrew_entries` | 15,116 | Hebrew Wiktionary entries |
+| `sense_clusters` | 3,897 | Induced word senses |
+| `gutenberg_catalog` | 2,915 | Gutenberg book metadata |
+| `aligned_catalogs` | 268 | Book pairs (Hebrew ↔ Spanish/English) |
+
+### Credentials
+
+Create `conf/local/credentials.yml`:
+```yaml
+postgres_warehouse:
+  con: postgresql://postgres:your_password@localhost:5432/rosetta
+```
+
+## Development
+
+### Adding a Pipeline
+
+```python
+# src/rosetta_dict/pipelines/my_pipeline/nodes.py
+def my_node(input_data):
+    # Process data
+    return output_data
+
+# src/rosetta_dict/pipelines/my_pipeline/pipeline.py
+from kedro.pipeline import Pipeline, node
+from .nodes import my_node
+
+def create_pipeline(**kwargs) -> Pipeline:
+    return Pipeline([
+        node(func=my_node, inputs="input_dataset", outputs="output_dataset")
+    ])
+```
+
+### Running Tests
+
+```bash
+pytest tests/
+```
+
+## Contributing
+
+This is a research/learning project. Feel free to explore and adapt for your own use.
+
+## Data Sources
+
+- **Wiktionary**: Via [kaikki.org](https://kaikki.org) pre-processed dumps
+- **Project Gutenberg**: Public domain books
+- **Ben Yehuda Archive**: Hebrew literature corpus
 
 ## License
 
-MIT
+See project-specific licensing for data sources. Code portions may be used according to project license (if specified).
+
+---
+
+**Last Updated**: 2025-12-30
+**Pipeline Status**: ✅ PostgreSQL migration complete, catalog alignment improved

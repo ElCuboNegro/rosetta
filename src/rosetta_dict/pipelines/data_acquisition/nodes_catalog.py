@@ -46,6 +46,7 @@ def fetch_gutenberg_catalog(languages: List[str] = ["es", "en"], limit: int = No
 
                     all_books.append(
                         {
+                            "id": book["id"],
                             "gutenberg_id": book["id"],
                             "title": book["title"],
                             "authors": authors,
@@ -100,13 +101,16 @@ def build_benyehuda_catalog(dump_path: str = "data/01_raw/ben_yehuda_dump") -> p
         df["file_path"] = df["path"].apply(get_file_path)
 
         # Rename columns to standard schema if needed
+        # We also add 'id' as a fallback for Kedro's index_col requirement
         df = df.rename(
             columns={
-                "ID": "benyehuda_id",
+                "ID": "id",
                 "authors": "author",
                 "original_language": "language_origin",
             }
         )
+        # Keep benyehuda_id for compatibility with alignment nodes
+        df["benyehuda_id"] = df["id"]
 
         # Filter existence?
         # df["exists"] = df["file_path"].apply(os.path.exists)

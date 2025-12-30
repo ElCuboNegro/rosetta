@@ -7,7 +7,7 @@ from kaikki.org, which has already been processed with wiktextract.
 import logging
 import urllib.request
 import json
-from typing import List, Dict, Any
+from typing import List
 from pathlib import Path
 import time
 from bs4 import BeautifulSoup
@@ -125,26 +125,33 @@ def download_kaikki_data(language_code: str, output_path: str) -> str:
             raise
 
 
+def _sanitize_filename(filename: str) -> str:
+    """Remove characters that are invalid in Windows filenames."""
+    # Invalid characters: \ / : * ? " < > |
+    invalid_chars = r'[\\/:*?"<>|]'
+    sanitized = re.sub(invalid_chars, "-", filename)
+    # Remove leading/trailing periods and spaces which can also be problematic
+    return sanitized.strip(". ").replace("\r", "").replace("\n", "")[:100]
+
+
 def download_gutenberg_data(languages: list[str], output_dir: str, limit: int = 20) -> list[str]:
     """
-    Download books from Project Gutenberg via Gutendex API.
+    Download popular books from Project Gutenberg based on language.
 
     Args:
         languages: List of language codes (e.g. ['es', 'he']).
-        output_dir: Base directory to save books.
-        limit: Max books per language to download.
+        output_dir: Directory to save the books.
+        limit: Maximum number of books to download per language.
 
     Returns:
-        List of paths to downloaded files.
+        List of paths to downloaded text files.
     """
-    import requests
-    import time
-
     downloaded_files = []
-    base_path = Path(output_dir)
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     for lang in languages:
-        lang_dir = base_path / lang
+        lang_dir = output_path / lang
         lang_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"Searching Gutenberg for language: {lang}")
@@ -168,7 +175,8 @@ def download_gutenberg_data(languages: list[str], output_dir: str, limit: int = 
                     if books_downloaded >= limit:
                         break
 
-                    title = book.get("title", "Unknown").replace(":", "-").replace("/", "-")[:50]
+                    raw_title = book.get("title", "Unknown")
+                    title = _sanitize_filename(raw_title)
                     book_id = book.get("id")
 
                     # Find text/plain format (loose matching)
@@ -234,8 +242,6 @@ def download_benyehuda_data(
     Returns:
         List of paths to downloaded JSON files.
     """
-    import json
-
     downloaded_files = []
     output_path = Path(output_dir) / "ben_yehuda"
     output_path.mkdir(parents=True, exist_ok=True)
@@ -316,8 +322,6 @@ def download_benyehuda_data(
                         if text:
                             metadata_entries.append(text)
 
-                    # Attempt to parse specific fields
-                    original_title = None
                     for entry in metadata_entries:
                         # Common patterns for original title
                         # Note: This is heuristic and depends on exact site wording
@@ -457,7 +461,7 @@ def download_books_from_matches(
 
             for book in results:
                 book_id = book["id"]
-                title = book["title"][:50].replace(":", "-").replace("/", "-")
+                title = _sanitize_filename(book["title"])
                 lang = book["languages"][0] if book.get("languages") else "unknown"
 
                 # Language subfolder?

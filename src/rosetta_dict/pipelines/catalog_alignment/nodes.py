@@ -139,6 +139,9 @@ def align_catalogs_bert(
                 f"DEBUG: Found translation candidate: {he_titles[i]} (Origin: {lang_origin})"
             )
 
+        # Get Hebrew author name for additional verification
+        he_author = str(benyehuda_catalog.iloc[i].get("authors", "")).lower()
+
         valid_candidates = False
         candidate_indices = []
 
@@ -249,12 +252,48 @@ def align_catalogs_bert(
                     ):
                         title_match_boost += 0.10
 
-                    adjusted_score = (
-                        cand_title_score
-                        + (auth_score / 100.0 * 0.2)
-                        + pop_boost
-                        + title_match_boost
-                    )
+                    # Short title penalty: help avoid false positives for short words like "Ayala"
+                    # Phonetic similarity between short names often leads to high semantic scores
+                    # Apply stronger penalty for very short titles in global search
+                    short_title_penalty = 0
+                    if not valid_candidates:  # Global search mode
+                        if len(he_title_lower) <= 5:
+                            short_title_penalty = -0.30  # Very strong penalty for very short titles
+                        elif len(he_title_lower) <= 8:
+                            short_title_penalty = -0.20  # Strong penalty for short titles
+
+                    # Cross-lingual Author Verification (Heuristic)
+                    # If we have a Hebrew author name, and we are in global search (no Wikidata match),
+                    # we check if the surname appears in any form.
+                    author_conflict_penalty = 0
+                    if not valid_candidates and he_author:
+                        # This is conservative: only penalize if we're sure they are DIFFERENT.
+                        # For example, if He-Author is clearly not Homer but we match Iliada.
+                        author_conflicts = [
+                            ("הומרוס", "homer"),
+                            ("סרוונטס", "cervantes"),
+                            ("שייקספיר", "shakespeare"),
+                            ("טולסטוי", "tolstoy"),
+                            ("דוסטויבסקי", "dostoevsky"),
+                            ("דיקנס", "dickens"),
+                            ("ברונטה", "bronte"),
+                            ("אוסטן", "austen"),
+                        ]
+                        for he_name, en_name in author_conflicts:
+                            if he_name in he_author and en_name not in cand_author:
+                                author_conflict_penalty = -0.40  # Strong penalty for known mismatch
+                                break
+
+                    # Calculate total adjustments
+                    total_boost = (auth_score / 100.0 * 0.2) + pop_boost + title_match_boost
+                    total_penalty = short_title_penalty + author_conflict_penalty
+
+                    # In global search mode (no author filtering), cap total positive boost
+                    # to prevent inflating low-quality matches above threshold
+                    if not valid_candidates:
+                        total_boost = min(total_boost, 0.10)  # Cap boost at 0.10 for global search
+
+                    adjusted_score = cand_title_score + total_boost + total_penalty
 
                     if adjusted_score > best_author_score:
                         best_author_score = adjusted_score
@@ -269,8 +308,9 @@ def align_catalogs_bert(
         if valid_candidates:
             current_threshold = max(0.40, threshold - 0.35)
         elif is_translation:
-            # Global search for identified translation (no author match) requires high confidence
-            current_threshold = max(0.90, threshold)
+            # Global search for identified translation (no author match) requires extremely high confidence
+            # to avoid phonetic/semantic traps for common short words like "Ayala" vs "Iliada".
+            current_threshold = max(0.95, threshold)
         else:
             current_threshold = threshold
 
@@ -291,5 +331,7 @@ def align_catalogs_bert(
             )
 
     df_matches = pd.DataFrame(matches)
+    # The 'id' column is handled by Kedro's index: true, index_label: id configuration in catalog.yml
+    # Adding it here manually causes a conflict during SQL save.
     logger.info(f"Found {len(df_matches)} validated alignments.")
     return df_matches

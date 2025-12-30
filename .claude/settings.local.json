@@ -12,7 +12,16 @@
       "Bash(conda activate:*)",
       "Bash(C:Usersjalba.condaenvsrossetapython.exe -c \"import sys; print(''Python:'', sys.executable); from phonikud import phonemize; print(''phonikud imported successfully''); test = phonemize(''שלום''); print(f''Test result: {test}'')\")",
       "Bash(\"C:\\Users\\jalba\\.conda\\envs\\rosseta\\python.exe\" -c \"import sys; print(''Python:'', sys.executable); from phonikud import phonemize; print(''phonikud imported successfully''); test = phonemize(''שלום''); print(f''Test result: {test}'')\")",
-      "Bash(pip uninstall:*)"
+      "Bash(pip uninstall:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(cat:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker cp:*)",
+      "Bash(iconv:*)",
+      "Bash(psql:*)",
+      "Bash(find:*)",
+      "Bash(test:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

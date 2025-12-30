@@ -9,10 +9,15 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import davies_bouldin_score, silhouette_score
 from transformers import BertModel, BertTokenizer
 
-from rosetta_dict.utils.word_extraction import build_word_index, get_sentences_for_word
+from rosetta_dict.utils.word_extraction import (
+    build_word_index,
+    extract_lemmas_from_sentence,
+    get_sentences_for_word,
+)
 
 try:
     import hdbscan
+
     HDBSCAN_AVAILABLE = True
 except ImportError:
     HDBSCAN_AVAILABLE = False
@@ -107,9 +112,7 @@ def compute_embeddings(text_series: pd.Series, target_word_series: pd.Series) ->
     return pd.Series(embeddings)
 
 
-def compute_ensemble_embeddings(
-    text_series: pd.Series, target_word_series: pd.Series
-) -> pd.Series:
+def compute_ensemble_embeddings(text_series: pd.Series, target_word_series: pd.Series) -> pd.Series:
     """
     Compute ensemble embeddings using multiple strategies:
     1. Target word contextual embedding
@@ -201,7 +204,7 @@ def find_optimal_k_elbow(embeddings: np.ndarray, max_k: int = 10) -> Tuple[int, 
             db_scores.append(db_score)
         else:
             silhouette_scores.append(-1)
-            db_scores.append(float('inf'))
+            db_scores.append(float("inf"))
 
     # Find elbow point in inertia curve
     if len(inertias) > 0:
@@ -221,7 +224,10 @@ def find_optimal_k_elbow(embeddings: np.ndarray, max_k: int = 10) -> Tuple[int, 
         best_sil_k = np.argmax(silhouette_scores) + 2
 
         # If silhouette score difference is small, prefer elbow method
-        if len(silhouette_scores) > 1 and silhouette_scores[best_sil_k - 2] - silhouette_scores[elbow_k - 2] < 0.1:
+        if (
+            len(silhouette_scores) > 1
+            and silhouette_scores[best_sil_k - 2] - silhouette_scores[elbow_k - 2] < 0.1
+        ):
             optimal_k = elbow_k
         else:
             optimal_k = best_sil_k
@@ -240,7 +246,9 @@ def find_optimal_k_elbow(embeddings: np.ndarray, max_k: int = 10) -> Tuple[int, 
     return optimal_k, metrics
 
 
-def cluster_hdbscan(embeddings: np.ndarray, min_cluster_size: int = 2) -> Tuple[np.ndarray, Dict[str, Any]]:
+def cluster_hdbscan(
+    embeddings: np.ndarray, min_cluster_size: int = 2
+) -> Tuple[np.ndarray, Dict[str, Any]]:
     """
     Perform density-based clustering using HDBSCAN.
 
@@ -253,8 +261,8 @@ def cluster_hdbscan(embeddings: np.ndarray, min_cluster_size: int = 2) -> Tuple[
     clusterer = hdbscan.HDBSCAN(
         min_cluster_size=min_cluster_size,
         min_samples=1,
-        metric='euclidean',
-        cluster_selection_method='eom'
+        metric="euclidean",
+        cluster_selection_method="eom",
     )
 
     labels = clusterer.fit_predict(embeddings)
@@ -267,7 +275,9 @@ def cluster_hdbscan(embeddings: np.ndarray, min_cluster_size: int = 2) -> Tuple[
         "method": "hdbscan",
         "n_clusters": n_clusters,
         "n_noise_points": n_noise,
-        "cluster_persistence": clusterer.cluster_persistence_.tolist() if hasattr(clusterer, 'cluster_persistence_') else None,
+        "cluster_persistence": clusterer.cluster_persistence_.tolist()
+        if hasattr(clusterer, "cluster_persistence_")
+        else None,
     }
 
     return labels, metadata
@@ -302,7 +312,7 @@ def validate_clustering_quality(
         db_score = davies_bouldin_score(embeddings, labels)
     except (ValueError, RuntimeError) as e:
         logger.debug(f"Davies-Bouldin score calculation failed: {e}")
-        db_score = float('inf')
+        db_score = float("inf")
 
     # Check cluster sizes
     unique_labels, counts = np.unique(labels[labels >= 0], return_counts=True)
@@ -317,7 +327,9 @@ def validate_clustering_quality(
     if db_score > 2.0:
         warnings.append(f"High Davies-Bouldin score ({db_score:.3f}): clusters may overlap")
     if cluster_balance < 0.1:
-        warnings.append(f"Imbalanced clusters: sizes range from {min_cluster_size} to {max_cluster_size}")
+        warnings.append(
+            f"Imbalanced clusters: sizes range from {min_cluster_size} to {max_cluster_size}"
+        )
     if n_clusters > len(embeddings) / 2:
         warnings.append(f"Too many clusters ({n_clusters}) for {len(embeddings)} examples")
 
@@ -361,11 +373,43 @@ def induce_senses(
     results = []
     quality_metrics = []
 
-    # Extract list of target words from Wiktionary data
-    target_words = wiktionary_examples["source_word"].unique()
+    # Extract list of target words from BOTH Wiktionary AND Books
+    wiktionary_words = set(wiktionary_examples["source_word"].unique())
+    logger.info(f"Found {len(wiktionary_words)} words in Wiktionary")
 
-    # Process first 500 words with examples for verification
-    target_words = target_words[:500]
+    # Get parameters
+    extract_all_words = parameters.get("extract_all_book_words", False)
+    max_words_to_process = parameters.get("max_words_to_process", 500)
+
+    if extract_all_words and book_sentences is not None and not book_sentences.empty:
+        logger.info("Extracting ALL unique words from book corpus...")
+
+        all_book_words = set()
+        for idx, sentence in enumerate(book_sentences["source_es"]):
+            if idx % 1000 == 0:
+                logger.info(
+                    f"Processed {idx}/{len(book_sentences)} sentences, found {len(all_book_words)} unique words"
+                )
+
+            lemmas = extract_lemmas_from_sentence(sentence, use_spacy=True)
+            all_book_words.update(lemmas)
+
+        logger.info(f"Found {len(all_book_words)} unique words in book corpus")
+
+        # Combine with Wiktionary words
+        target_words = list(wiktionary_words | all_book_words)
+        logger.info(
+            f"Total unique words: {len(target_words)} (Wiktionary: {len(wiktionary_words)}, Books only: {len(all_book_words - wiktionary_words)})"
+        )
+    else:
+        # Only use Wiktionary words (original behavior)
+        target_words = list(wiktionary_words)
+
+    # Limit to max_words_to_process
+    if len(target_words) > max_words_to_process:
+        logger.info(f"Limiting to {max_words_to_process} words (total: {len(target_words)})")
+        target_words = target_words[:max_words_to_process]
+
     logger.info(f"Processing {len(target_words)} words.")
 
     # Get parameters
@@ -391,17 +435,24 @@ def induce_senses(
         # 2. Find relevant Book Sentences
         if use_word_index and word_index_df is not None:
             # Use pre-built word index for fast lookup
-            book_matches = get_sentences_for_word(word, word_index_df, max_sentences=max_book_sentences)
+            book_matches = get_sentences_for_word(
+                word, word_index_df, max_sentences=max_book_sentences
+            )
             if not book_matches.empty:
                 book_matches["source_word"] = word
                 # Rename columns for consistency
-                if "sentence_text" not in book_matches.columns and "source_es" in book_matches.columns:
+                if (
+                    "sentence_text" not in book_matches.columns
+                    and "source_es" in book_matches.columns
+                ):
                     book_matches["sentence_text"] = book_matches["source_es"]
         else:
             # Fall back to regex search (slower but works without index)
             word_regex = rf"\b{re.escape(word)}\b"
             book_matches = book_sentences[
-                book_sentences["source_es"].str.contains(word_regex, regex=True, case=False, na=False)
+                book_sentences["source_es"].str.contains(
+                    word_regex, regex=True, case=False, na=False
+                )
             ].copy()
 
             if len(book_matches) > max_book_sentences:
@@ -483,7 +534,9 @@ def induce_senses(
                     kmeans = KMeans(n_clusters=optimal_k, random_state=42, n_init=10)
                     clusters = kmeans.fit_predict(valid_embeddings)
                     metadata = k_metrics
-                    logger.info(f"Optimal k={optimal_k} for '{word}' (method: {metadata.get('method', 'kmeans')})")
+                    logger.info(
+                        f"Optimal k={optimal_k} for '{word}' (method: {metadata.get('method', 'kmeans')})"
+                    )
 
             else:
                 # Standard KMeans with optimal k

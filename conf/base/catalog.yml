@@ -1,4 +1,5 @@
-# Spanish-Hebrew Dictionary Data Catalog
+# Spanish-Hebrew Dictionary Data Catalog - PostgreSQL Version
+# All datasets stored in PostgreSQL warehouse for production use
 
 # ============================================================================
 # RAW DATA (Input sources)
@@ -23,6 +24,7 @@ en_dump_filepath:
     kedro-viz:
       layer: raw
 
+# Tatoeba sentences still in CSV (external source)
 tatoeba_sentences:
   type: pandas.CSVDataset
   filepath: data/01_raw/tatoeba-sample.csv
@@ -35,112 +37,252 @@ tatoeba_sentences:
     names: ['id', 'lang', 'text']
 
 # ============================================================================
-# INTERMEDIATE DATA (Harvester pipeline outputs)
+# INTERMEDIATE DATA - PostgreSQL Warehouse (Harvester pipeline outputs)
 # ============================================================================
 
 raw_spanish_entries_unfiltered:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/raw_spanish_entries_unfiltered.parquet
+  type: pandas.SQLTableDataset
+  table_name: raw_spanish_entries_unfiltered
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: intermediate
 
 raw_hebrew_entries_unfiltered:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/raw_hebrew_entries_unfiltered.parquet
+  type: pandas.SQLTableDataset
+  table_name: raw_hebrew_entries_unfiltered
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: intermediate
 
 raw_spanish_entries_filtered:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/raw_spanish_entries_filtered.parquet
+  type: pandas.SQLTableDataset
+  table_name: raw_spanish_entries_filtered
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: intermediate
 
 raw_hebrew_entries_filtered:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/raw_hebrew_entries_filtered.parquet
+  type: pandas.SQLTableDataset
+  table_name: raw_hebrew_entries_filtered
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: intermediate
 
 raw_spanish_entries:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/raw_spanish_entries.parquet
+  type: pandas.SQLTableDataset
+  table_name: raw_spanish_entries
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: intermediate
 
 raw_hebrew_entries:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/raw_hebrew_entries.parquet
+  type: pandas.SQLTableDataset
+  table_name: raw_hebrew_entries
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: intermediate
 
 bridge_entries:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/bridge_entries.parquet
+  type: pandas.SQLTableDataset
+  table_name: bridge_entries
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: intermediate
 
 clean_examples:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/clean_examples.parquet
+  type: pandas.SQLTableDataset
+  table_name: clean_examples
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: intermediate
 
 wiktionary_examples_tagged:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/wiktionary_examples_tagged.parquet
+  type: pandas.SQLTableDataset
+  table_name: wiktionary_examples_tagged
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: intermediate
 
 tatoeba_examples_tagged:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/tatoeba_examples_tagged.parquet
+  type: pandas.SQLTableDataset
+  table_name: tatoeba_examples_tagged
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: intermediate
 
+aligned_book_sentences:
+  type: pandas.SQLTableDataset
+  table_name: aligned_book_sentences
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: append
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+benyehuda_catalog_enriched:
+  type: pandas.SQLTableDataset
+  table_name: benyehuda_catalog_enriched
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+aligned_catalogs:
+  type: pandas.SQLTableDataset
+  table_name: aligned_catalogs
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
+  metadata:
+    kedro-viz:
+      layer: intermediate
 
 # ============================================================================
-# PRIMARY DATA (Aligner pipeline outputs)
+# PRIMARY DATA - PostgreSQL Warehouse (Aligner pipeline outputs)
 # ============================================================================
 
 language_alignment.aligned_matches:
-  type: pandas.ParquetDataset
-  filepath: data/03_primary/aligned_matches.parquet
+  type: pandas.SQLTableDataset
+  table_name: aligned_matches
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: primary
 
 language_alignment.orphaned_entries:
-  type: pandas.ParquetDataset
-  filepath: data/03_primary/orphaned_entries.parquet
+  type: pandas.SQLTableDataset
+  table_name: orphaned_entries
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: primary
 
 language_alignment.enriched_entries_raw:
-  type: pandas.ParquetDataset
-  filepath: data/03_primary/enriched_entries_raw.parquet
+  type: pandas.SQLTableDataset
+  table_name: enriched_entries_raw
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: primary
 
 language_alignment.enriched_entries:
-  type: pandas.ParquetDataset
-  filepath: data/03_primary/enriched_entries.parquet
+  type: pandas.SQLTableDataset
+  table_name: enriched_entries
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
       layer: primary
 
+# Aligned dictionary (keep as JSON for now - output format)
 aligned_dictionary:
   type: json.JSONDataset
   filepath: data/03_primary/aligned_dictionary.json
@@ -172,7 +314,86 @@ aligned_dictionary_with_ipa:
       layer: primary
 
 # ============================================================================
-# METRICS & STATISTICS (Pipeline monitoring)
+# FEATURE DATA - PostgreSQL Warehouse (Sense induction)
+# ============================================================================
+
+induced_senses_clusters:
+  type: pandas.SQLTableDataset
+  table_name: sense_clusters
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: append
+  metadata:
+    kedro-viz:
+      layer: feature
+
+sense_induction.induced_senses_clusters:
+  type: pandas.SQLTableDataset
+  table_name: sense_clusters
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: append
+  metadata:
+    kedro-viz:
+      layer: feature
+
+# Cluster metadata (meaning definitions, labels)
+cluster_metadata_warehouse:
+  type: pandas.SQLTableDataset
+  table_name: cluster_metadata
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
+  metadata:
+    kedro-viz:
+      layer: feature
+
+# ============================================================================
+# RAW CATALOG DATA - PostgreSQL Warehouse
+# ============================================================================
+
+gutenberg_catalog_raw:
+  type: pandas.SQLTableDataset
+  table_name: gutenberg_catalog
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
+  metadata:
+    kedro-viz:
+      layer: raw
+
+benyehuda_catalog_raw:
+  type: pandas.SQLTableDataset
+  table_name: benyehuda_catalog_raw
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
+  metadata:
+    kedro-viz:
+      layer: raw
+
+# ============================================================================
+# METRICS & STATISTICS (Keep as JSON files - for visualization)
 # ============================================================================
 
 parsing_stats:
@@ -211,7 +432,7 @@ progress_summary:
       layer: metrics
 
 # ============================================================================
-# REPORTING (Final output)
+# REPORTING (Final output - keep as files)
 # ============================================================================
 
 gutenberg_files_list:
@@ -226,21 +447,6 @@ gutenberg_counterparts_list:
   type: json.JSONDataset
   filepath: data/01_raw/gutenberg_counterparts/downloaded_manifest.json
 
-aligned_book_sentences:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/aligned_books.parquet
-
-induced_senses_clusters:
-  type: pandas.ParquetDataset
-  filepath: data/04_feature/sense_clusters.parquet
-
-sense_induction.induced_senses_clusters:
-  type: pandas.ParquetDataset
-  filepath: data/04_feature/sense_clusters.parquet
-  metadata:
-    kedro-viz:
-      layer: feature
-
 spanish_wiktionary_json:
   type: text.TextDataset
   filepath: data/08_reporting/dictionary_v1.json
@@ -249,37 +455,21 @@ spanish_wiktionary_json:
       encoding: utf-8
     open_args_load:
       encoding: utf-8
-  metadata:
 
 # ============================================================================
-# CATALOG ALIGNMENT DATA
+# VALIDATION RESULTS - PostgreSQL Warehouse
 # ============================================================================
 
-gutenberg_catalog_raw:
-  type: pandas.ParquetDataset
-  filepath: data/01_raw/gutenberg_catalog.parquet
+book_validation_results_warehouse:
+  type: pandas.SQLTableDataset
+  table_name: book_validation_results
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: true
+    index_label: id
+    if_exists: replace
   metadata:
     kedro-viz:
-      layer: raw
-
-benyehuda_catalog_raw:
-  type: pandas.ParquetDataset
-  filepath: data/01_raw/benyehuda_catalog.parquet
-  metadata:
-    kedro-viz:
-      layer: raw
-
-benyehuda_catalog_enriched:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/benyehuda_catalog_enriched.parquet
-  metadata:
-    kedro-viz:
-      layer: intermediate
-
-aligned_catalogs:
-  type: pandas.ParquetDataset
-  filepath: data/02_intermediate/aligned_catalogs.parquet
-  metadata:
-    kedro-viz:
-      layer: intermediate
-
+      layer: metrics

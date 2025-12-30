@@ -34,8 +34,8 @@ def process_tatoeba(tatoeba_df: pd.DataFrame) -> pd.DataFrame:
     logger.info("Processing Tatoeba sentences...")
 
     # Filter for Spanish and Hebrew sentences
-    es_sentences = tatoeba_df[tatoeba_df['lang'] == 'es'].copy()
-    he_sentences = tatoeba_df[tatoeba_df['lang'] == 'he'].copy()
+    es_sentences = tatoeba_df[tatoeba_df["lang"] == "es"].copy()
+    he_sentences = tatoeba_df[tatoeba_df["lang"] == "he"].copy()
 
     logger.info(f"Found {len(es_sentences)} Spanish and {len(he_sentences)} Hebrew sentences")
 
@@ -47,19 +47,14 @@ def process_tatoeba(tatoeba_df: pd.DataFrame) -> pd.DataFrame:
         es_row = es_sentences.iloc[idx]
         he_row = he_sentences.iloc[idx]
 
-        es_text = str(es_row['text'])
-        he_text = str(he_row['text'])
+        es_text = str(es_row["text"])
+        he_text = str(he_row["text"])
 
         # Extract words (simple tokenization)
         es_words = _tokenize_spanish(es_text)
         he_words = _tokenize_hebrew(he_text)
 
-        examples.append({
-            "es": es_text,
-            "he": he_text,
-            "es_words": es_words,
-            "he_words": he_words
-        })
+        examples.append({"es": es_text, "he": he_text, "es_words": es_words, "he_words": he_words})
 
     df = pd.DataFrame(examples)
     logger.info(f"Processed {len(df)} Spanish-Hebrew sentence pairs")
@@ -75,11 +70,7 @@ def _tokenize_spanish(text: str) -> List[str]:
     Returns:
         List of lowercase Spanish words (length > 2).
     """
-    return [
-        w.strip('.,!?;:()[]"\'').lower()
-        for w in text.split()
-        if len(w) > 2
-    ]
+    return [w.strip(".,!?;:()[]\"'").lower() for w in text.split() if len(w) > 2]
 
 
 def _tokenize_hebrew(text: str) -> List[str]:
@@ -91,8 +82,4 @@ def _tokenize_hebrew(text: str) -> List[str]:
     Returns:
         List of Hebrew words (length > 1).
     """
-    return [
-        w.strip('.,!?;:()[]"\'')
-        for w in text.split()
-        if len(w) > 1
-    ]
+    return [w.strip(".,!?;:()[]\"'") for w in text.split() if len(w) > 1]

@@ -83,6 +83,9 @@ def parse_spanish_wiktionary(jsonl_path: str) -> pd.DataFrame:
         )
 
     df = pd.DataFrame(data)
+    if not df.empty:
+        df.reset_index(inplace=True)
+        df.rename(columns={"index": "id"}, inplace=True)
     logger.info(f"Found {spanish_entries} Spanish entries out of {len(entries)} total entries")
     logger.info(f"Kept {len(df)} Spanish entries with data")
 
@@ -160,6 +163,9 @@ def parse_hebrew_wiktionary(jsonl_path: str) -> pd.DataFrame:
         )
 
     df = pd.DataFrame(data)
+    if not df.empty:
+        df.reset_index(inplace=True)
+        df.rename(columns={"index": "id"}, inplace=True)
     logger.info(f"Found {hebrew_entries} Hebrew entries out of {len(entries)} total entries")
     logger.info(f"Kept {len(df)} Hebrew entries with data")
 
@@ -272,6 +278,9 @@ def parse_english_wiktionary(jsonl_path: str) -> pd.DataFrame:
         )
 
     df = pd.DataFrame(data)
+    if not df.empty:
+        df.reset_index(inplace=True)
+        df.rename(columns={"index": "id"}, inplace=True)
     logger.info(f"Extracted {len(df)} bridge entries from English Wiktionary")
 
     if len(df) > 0:

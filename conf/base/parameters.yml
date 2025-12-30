@@ -43,6 +43,14 @@ sense_induction_params:
   # Maximum number of book sentences to use per word
   max_book_sentences_per_word: 50
 
+  # Extract ALL unique words from book corpus (not just Wiktionary words)
+  # WARNING: This will find thousands of words and take much longer!
+  extract_all_book_words: true
+
+  # Maximum total words to process (limits processing time)
+  # Set to 0 for unlimited, or high number like 10000 for all words
+  max_words_to_process: 10000  # Process up to 10k words
+
 benyehuda_path: "data/01_raw"
 benyehuda_limit: 30000
 benyehuda_languages:

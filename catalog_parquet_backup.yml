@@ -1,0 +1,345 @@
+# Spanish-Hebrew Dictionary Data Catalog
+
+# ============================================================================
+# RAW DATA (Input sources)
+# ============================================================================
+
+# Download nodes output file paths as strings
+es_dump_filepath:
+  type: MemoryDataset
+  metadata:
+    kedro-viz:
+      layer: raw
+
+he_dump_filepath:
+  type: MemoryDataset
+  metadata:
+    kedro-viz:
+      layer: raw
+
+en_dump_filepath:
+  type: MemoryDataset
+  metadata:
+    kedro-viz:
+      layer: raw
+
+tatoeba_sentences:
+  type: pandas.CSVDataset
+  filepath: data/01_raw/tatoeba-sample.csv
+  metadata:
+    kedro-viz:
+      layer: raw
+  load_args:
+    sep: '\t'
+    header: null
+    names: ['id', 'lang', 'text']
+
+# ============================================================================
+# INTERMEDIATE DATA (Harvester pipeline outputs)
+# ============================================================================
+
+raw_spanish_entries_unfiltered:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/raw_spanish_entries_unfiltered.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+raw_hebrew_entries_unfiltered:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/raw_hebrew_entries_unfiltered.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+raw_spanish_entries_filtered:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/raw_spanish_entries_filtered.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+raw_hebrew_entries_filtered:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/raw_hebrew_entries_filtered.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+raw_spanish_entries:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/raw_spanish_entries.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+raw_hebrew_entries:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/raw_hebrew_entries.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+bridge_entries:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/bridge_entries.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+clean_examples:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/clean_examples.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+wiktionary_examples_tagged:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/wiktionary_examples_tagged.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+tatoeba_examples_tagged:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/tatoeba_examples_tagged.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+
+# ============================================================================
+# PRIMARY DATA (Aligner pipeline outputs)
+# ============================================================================
+
+language_alignment.aligned_matches:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/aligned_matches.parquet
+  metadata:
+    kedro-viz:
+      layer: primary
+
+language_alignment.orphaned_entries:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/orphaned_entries.parquet
+  metadata:
+    kedro-viz:
+      layer: primary
+
+language_alignment.enriched_entries_raw:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/enriched_entries_raw.parquet
+  metadata:
+    kedro-viz:
+      layer: primary
+
+language_alignment.enriched_entries:
+  type: pandas.ParquetDataset
+  filepath: data/03_primary/enriched_entries.parquet
+  metadata:
+    kedro-viz:
+      layer: primary
+
+aligned_dictionary:
+  type: json.JSONDataset
+  filepath: data/03_primary/aligned_dictionary.json
+  save_args:
+    ensure_ascii: False
+    indent: 2
+  fs_args:
+    open_args_save:
+      encoding: utf-8
+    open_args_load:
+      encoding: utf-8
+  metadata:
+    kedro-viz:
+      layer: primary
+
+aligned_dictionary_with_ipa:
+  type: json.JSONDataset
+  filepath: data/03_primary/aligned_dictionary_with_ipa.json
+  save_args:
+    ensure_ascii: False
+    indent: 2
+  fs_args:
+    open_args_save:
+      encoding: utf-8
+    open_args_load:
+      encoding: utf-8
+  metadata:
+    kedro-viz:
+      layer: primary
+
+# ============================================================================
+# METRICS & STATISTICS (Pipeline monitoring)
+# ============================================================================
+
+parsing_stats:
+  type: json.JSONDataset
+  filepath: data/06_metrics/parsing_stats.json
+  metadata:
+    kedro-viz:
+      layer: metrics
+
+parsing_visualizations:
+  type: plotly.JSONDataset
+  filepath: data/06_metrics/parsing_viz.json
+  metadata:
+    kedro-viz:
+      layer: metrics
+
+metrics_alignment.alignment_stats:
+  type: json.JSONDataset
+  filepath: data/06_metrics/alignment_stats.json
+  metadata:
+    kedro-viz:
+      layer: metrics
+
+alignment_visualizations:
+  type: plotly.JSONDataset
+  filepath: data/06_metrics/alignment_viz.json
+  metadata:
+    kedro-viz:
+      layer: metrics
+
+progress_summary:
+  type: json.JSONDataset
+  filepath: data/06_metrics/progress_summary.json
+  metadata:
+    kedro-viz:
+      layer: metrics
+
+# ============================================================================
+# REPORTING (Final output)
+# ============================================================================
+
+gutenberg_files_list:
+  type: json.JSONDataset
+  filepath: data/01_raw/gutenberg/downloaded_manifest.json
+
+ben_yehuda_files_list:
+  type: json.JSONDataset
+  filepath: data/01_raw/ben_yehuda/downloaded_manifest.json
+
+gutenberg_counterparts_list:
+  type: json.JSONDataset
+  filepath: data/01_raw/gutenberg_counterparts/downloaded_manifest.json
+
+aligned_book_sentences:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/aligned_books.parquet
+
+induced_senses_clusters:
+  type: pandas.ParquetDataset
+  filepath: data/04_feature/sense_clusters.parquet
+
+sense_induction.induced_senses_clusters:
+  type: pandas.ParquetDataset
+  filepath: data/04_feature/sense_clusters.parquet
+  metadata:
+    kedro-viz:
+      layer: feature
+
+spanish_wiktionary_json:
+  type: text.TextDataset
+  filepath: data/08_reporting/dictionary_v1.json
+  fs_args:
+    open_args_save:
+      encoding: utf-8
+    open_args_load:
+      encoding: utf-8
+  metadata:
+
+# ============================================================================
+# CATALOG ALIGNMENT DATA
+# ============================================================================
+
+gutenberg_catalog_raw:
+  type: pandas.ParquetDataset
+  filepath: data/01_raw/gutenberg_catalog.parquet
+  metadata:
+    kedro-viz:
+      layer: raw
+
+benyehuda_catalog_raw:
+  type: pandas.ParquetDataset
+  filepath: data/01_raw/benyehuda_catalog.parquet
+  metadata:
+    kedro-viz:
+      layer: raw
+
+benyehuda_catalog_enriched:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/benyehuda_catalog_enriched.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+aligned_catalogs:
+  type: pandas.ParquetDataset
+  filepath: data/02_intermediate/aligned_catalogs.parquet
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+
+# ============================================================================
+# POSTGRESQL WAREHOUSE (Primary data storage)
+# ============================================================================
+
+# Sense clusters in PostgreSQL (replaces parquet for production)
+sense_clusters_warehouse:
+  type: pandas.SQLTableDataset
+  table_name: sense_clusters
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: false
+    if_exists: append
+  metadata:
+    kedro-viz:
+      layer: feature
+
+# Cluster metadata (meaning definitions, labels)
+cluster_metadata_warehouse:
+  type: pandas.SQLTableDataset
+  table_name: cluster_metadata
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: false
+    if_exists: replace
+  metadata:
+    kedro-viz:
+      layer: feature
+
+# Aligned book sentences in PostgreSQL
+aligned_book_sentences_warehouse:
+  type: pandas.SQLTableDataset
+  table_name: aligned_book_sentences
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: false
+    if_exists: append
+  metadata:
+    kedro-viz:
+      layer: intermediate
+
+# Book validation results
+book_validation_results_warehouse:
+  type: pandas.SQLTableDataset
+  table_name: book_validation_results
+  credentials: postgres_warehouse
+  load_args:
+    index_col: id
+  save_args:
+    index: false
+    if_exists: replace
+  metadata:
+    kedro-viz:
+      layer: metrics
