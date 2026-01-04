@@ -1,4 +1,4 @@
-# Rosetta Dictionary - Dockerfile
+# Rosetta Dictionary - Dockerfile (edition just to test pushes)
 # Multi-stage build for efficient image size
 
 FROM python:3.11-slim as base
